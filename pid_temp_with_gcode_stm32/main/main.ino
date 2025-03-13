@@ -21,7 +21,8 @@
 //todo: ?
 
 // Thermistor
-#define SENSOR_PIN              PA6
+#define SENSOR_PIN1              PA6
+#define SENSOR_PIN2              PA0
 #define REFERENCE_RESISTANCE    4700.0
 #define NOMINAL_RESISTANCE      100000.0
 #define NOMINAL_TEMPERATURE     25.0
@@ -44,6 +45,8 @@ float waitTemp = 0;
 float waitTempTime = 0;
 float targetTemp = 0;
 float actualTemp = 0;
+float actualTemp1 = 0;
+float actualTemp2 = 0;
 float heaterPower = 0;
 double tempAutoReportInterval = 0;
 double tempAutoReportTime = 0;
@@ -53,7 +56,8 @@ uint8_t pidEnabled = 1;
 
 HardwareSerial Serial = HardwareSerial(PA10, PA9);
 GCodeParser GCode = GCodeParser();
-Thermistor* thermistor;
+Thermistor* thermistor1;
+Thermistor* thermistor2;
 QuickPID pid = QuickPID(&actualTemp, &heaterPower, &targetTemp);
 
 HardwareTimer *MyTim = new HardwareTimer(TIM2);
@@ -76,16 +80,29 @@ void setup() {
   analogReadResolution(12);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(RELAY_PIN, OUTPUT);
-  Thermistor* originThermistor = new NTC_Thermistor(
-    SENSOR_PIN,
+  Thermistor* originThermistor1 = new NTC_Thermistor(
+    SENSOR_PIN1,
     REFERENCE_RESISTANCE,
     NOMINAL_RESISTANCE,
     NOMINAL_TEMPERATURE,
     BETA_VALUE,
     ANALOG_RESOLUTION
   );
-  thermistor = new AverageThermistor(
-    originThermistor,
+  thermistor1 = new AverageThermistor(
+    originThermistor1,
+    READINGS_NUMBER,
+    DELAY_TIME
+  );
+  Thermistor* originThermistor2 = new NTC_Thermistor(
+    SENSOR_PIN2,
+    REFERENCE_RESISTANCE,
+    NOMINAL_RESISTANCE,
+    NOMINAL_TEMPERATURE,
+    BETA_VALUE,
+    ANALOG_RESOLUTION
+  );
+  thermistor2 = new AverageThermistor(
+    originThermistor2,
     READINGS_NUMBER,
     DELAY_TIME
   );
@@ -117,7 +134,9 @@ void loadFromEEPROM() {
 
 void computePid() {
   // read from inputs
-  actualTemp = thermistor->readCelsius();
+  actualTemp1 = thermistor1->readCelsius();
+  actualTemp2 = thermistor2->readCelsius();
+  actualTemp = (actualTemp1 + actualTemp2) / 2;
 
   // calculate
   if (pidEnabled) {
@@ -158,12 +177,20 @@ void processCommandM(int codeNumber) {
       if (GCode.HasWord('S')) { targetTemp = (int)GCode.GetWordValue('S'); }
       break;
     case 105: // Report Temperatures
-      Serial.print("T:");
+      Serial.print("T0:");
       Serial.print(actualTemp);
       Serial.print(" /");
       Serial.print((int)targetTemp);
       Serial.print(" @:");
       Serial.print((int)heaterPower);
+      Serial.print(" T1:");
+      Serial.print(actualTemp1);
+      Serial.print(" /");
+      Serial.print((int)targetTemp);
+      Serial.print(" T2:");
+      Serial.print(actualTemp2);
+      Serial.print(" /");
+      Serial.print((int)targetTemp);
       Serial.print("\n");
       break;
     // case 108: // Cancel Heating //Breaks out of an M109 wait-for-temperature loop
@@ -259,16 +286,26 @@ void heaterFault() {
 void loop() {
   uint32_t time = millis();
 
-  Serial.print(".");
   computePid();
+  // Serial.print(".");
 
   // thermal protection
-  if (actualTemp < MINIMUM_VALUE || actualTemp > MAXIMUM_VALUE) {
+  if (actualTemp1 < MINIMUM_VALUE || actualTemp1 > MAXIMUM_VALUE) {
     heaterFault();
     Serial.print("ERROR: Termister temperature out of bounds! (");
     Serial.print(MINIMUM_VALUE);
     Serial.print(" <= ");
-    Serial.print(actualTemp);
+    Serial.print(actualTemp1);
+    Serial.print(" <= ");
+    Serial.print(MAXIMUM_VALUE);
+    Serial.print(")\n");
+  }
+  if (actualTemp2 < MINIMUM_VALUE || actualTemp2 > MAXIMUM_VALUE) {
+    heaterFault();
+    Serial.print("ERROR: Termister temperature out of bounds! (");
+    Serial.print(MINIMUM_VALUE);
+    Serial.print(" <= ");
+    Serial.print(actualTemp2);
     Serial.print(" <= ");
     Serial.print(MAXIMUM_VALUE);
     Serial.print(")\n");
