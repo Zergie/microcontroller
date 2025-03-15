@@ -14,12 +14,6 @@
 #define UUID                    "554d5e22-d685-4c68-973a-b57ff1e82f6f"
 #define TEMP_RESIDENCY_TIME     5  // Actual temperature must be close to target for this long (in seconds) before M109 returns success
 
-//todo: ?
-#define TEMP_HYSTERESIS         5    // The maximum temperature difference (in Celsius) to a target temperature that is considered in range of the target.
-#define TEMP_CHECK_TIME         20   // This controls heater verification during initial heating. (in seconds)
-#define TEMP_HEATING_GAIN       2.0  // The minimum temperature (in Celsius) that the heater must increase by during the check_gain_time check.
-//todo: ?
-
 // Thermistor
 #define SENSOR_PIN1              PA6
 #define SENSOR_PIN2              PA0
@@ -47,6 +41,7 @@ float targetTemp = 0;
 float actualTemp = 0;
 float actualTemp1 = 0;
 float actualTemp2 = 0;
+float actualTemp3 = 0;
 float heaterPower = 0;
 double tempAutoReportInterval = 0;
 double tempAutoReportTime = 0;
@@ -54,13 +49,42 @@ uint32_t tempCheckTime = 0;
 float tempCheckTemp = 0;
 uint8_t pidEnabled = 1;
 
+// Heater Fault Check
+uint32_t heaterCheckTime = 0.0;   // This controls heater verification during initial heating. (in seconds) //saved in eeprom
+float heaterTempGain = 0.0;       // The minimum temperature (in Celsius) that the heater must increase by during the check_gain_time check. //saved in eeprom
+float heaterTempHysteresis = 0.0; // The maximum temperature difference (in Celsius) to a target temperature that is considered in range of the target. //saved in eeprom
+// float heaterTempRange[6] = { 0.0, 300.0, 0.0, 300.0, 0.0, 80.0 }; // {min, max, min, max, ...}
+float heaterTempRange[6] = { -300.0, 300.0, -300.0, 300.0, -300.0, 80.0 }; // {min, max, min, max, ...}
+
 HardwareSerial Serial = HardwareSerial(PA10, PA9);
 GCodeParser GCode = GCodeParser();
 Thermistor* thermistor1;
 Thermistor* thermistor2;
 QuickPID pid = QuickPID(&actualTemp, &heaterPower, &targetTemp);
-
 HardwareTimer *MyTim = new HardwareTimer(TIM2);
+
+void saveToEEPROM() {
+  int address = 0;
+  EEPROM.write(address, kp); address += sizeof(double);
+  EEPROM.write(address, ki); address += sizeof(double);
+  EEPROM.write(address, kd); address += sizeof(double);
+  EEPROM.write(address, heaterCheckTime); address += sizeof(uint32_t);
+  EEPROM.write(address, heaterTempGain); address += sizeof(float);
+  EEPROM.write(address, heaterTempHysteresis); address += sizeof(float);
+}
+
+void loadFromEEPROM() {
+  int address = 0;
+  kp                   = EEPROM.read(address); address += sizeof(double);
+  ki                   = EEPROM.read(address); address += sizeof(double);
+  kd                   = EEPROM.read(address); address += sizeof(double);
+  heaterCheckTime      = EEPROM.read(address); address += sizeof(uint32_t);
+  heaterTempGain       = EEPROM.read(address); address += sizeof(float);
+  heaterTempHysteresis = EEPROM.read(address); address += sizeof(float);
+
+  pid.SetTunings(kp, ki, kd);
+}
+
 void Update_IT_callback(void)
 {
   if (heaterPower >= 1.0) {
@@ -73,7 +97,6 @@ void Compare_IT_callback(void)
     digitalWrite(RELAY_PIN, LOW);
     digitalWrite(LED_BUILTIN, HIGH);
 }
-
 
 void setup() {
   Serial.begin(115200);
@@ -117,25 +140,11 @@ void setup() {
   while(!Serial);
 }
 
-void saveToEEPROM() {
-  int address = 0;
-  EEPROM.write(address, kp); address += sizeof(double);
-  EEPROM.write(address, ki); address += sizeof(double);
-  EEPROM.write(address, kd); address += sizeof(double);
-}
-
-void loadFromEEPROM() {
-  int address = 0;
-  kp = EEPROM.read(address); address += sizeof(double);
-  ki = EEPROM.read(address); address += sizeof(double);
-  kd = EEPROM.read(address); address += sizeof(double);
-  pid.SetTunings(kp, ki, kd);
-}
-
 void computePid() {
   // read from inputs
   actualTemp1 = thermistor1->readCelsius();
   actualTemp2 = thermistor2->readCelsius();
+  // actualTemp3 = thermistor2->readCelsius();
   actualTemp = (actualTemp1 + actualTemp2) / 2;
 
   // calculate
@@ -191,6 +200,8 @@ void processCommandM(int codeNumber) {
       Serial.print(actualTemp2);
       Serial.print(" /");
       Serial.print((int)targetTemp);
+      Serial.print(" T3:");
+      Serial.print(actualTemp3);
       Serial.print("\n");
       break;
     // case 108: // Cancel Heating //Breaks out of an M109 wait-for-temperature loop
@@ -265,11 +276,35 @@ void processCommandM(int codeNumber) {
       kp = 1.0;
       ki = 3.0;
       kd = 0.2;
+      heaterCheckTime = 20;
+      heaterTempGain = 1.0;
+      heaterTempHysteresis = 10.0;
       break;
     case 503: // Print the current settings
       Serial.print("kp = "); Serial.print(kp); Serial.print("\n");
       Serial.print("ki = "); Serial.print(ki); Serial.print("\n");
       Serial.print("kd = "); Serial.print(kd); Serial.print("\n");
+      Serial.print("Heater Check Time = "); Serial.print(heaterCheckTime); Serial.print("\n");
+      Serial.print("Heater Temperatur Gain = "); Serial.print(heaterTempGain); Serial.print("\n");
+      Serial.print("Heater Temperatur Hysteresis = "); Serial.print(heaterTempHysteresis); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 0 = "); Serial.print(heaterTempRange[0]); Serial.print(" ... "); Serial.print(heaterTempRange[1]); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 1 = "); Serial.print(heaterTempRange[2]); Serial.print(" ... "); Serial.print(heaterTempRange[3]); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 2 = "); Serial.print(heaterTempRange[4]); Serial.print(" ... "); Serial.print(heaterTempRange[5]); Serial.print("\n");
+      break;
+    case 570: // Configure heater fault detection (custom gcode!)
+      if (GCode.HasWord('P')) { heaterCheckTime = GCode.GetWordValue('P'); }
+      if (GCode.HasWord('T')) { heaterTempGain = GCode.GetWordValue('T'); }
+      if (GCode.HasWord('S')) { heaterTempHysteresis = GCode.GetWordValue('S'); }
+      break;
+    case 571: // Configure heater range (custom gcode!)
+      if (!GCode.HasWord('H')) { 
+        Serial.print("Parameter H (heater) is required!\n");
+      } else {
+        uint32_t heater = 0;
+        if (GCode.HasWord('H')) { heater = GCode.GetWordValue('H'); }
+        if (GCode.HasWord('T')) { heaterTempRange[heater * 2] = GCode.GetWordValue('T'); } // min
+        if (GCode.HasWord('P')) { heaterTempRange[(heater * 2)+1] = GCode.GetWordValue('T'); } // max
+      }
       break;
     default:
       Serial.print("Unknown M command!\n");
@@ -290,31 +325,47 @@ void loop() {
   // Serial.print(".");
 
   // thermal protection
-  if (actualTemp1 < MINIMUM_VALUE || actualTemp1 > MAXIMUM_VALUE) {
+  if (actualTemp1 < heaterTempRange[0] || actualTemp1 > heaterTempRange[1]) {
     heaterFault();
-    Serial.print("ERROR: Termister temperature out of bounds! (");
-    Serial.print(MINIMUM_VALUE);
+    Serial.print("ERROR: Termister 0 temperature out of bounds! (");
+    Serial.print(heaterTempRange[0]);
     Serial.print(" <= ");
     Serial.print(actualTemp1);
     Serial.print(" <= ");
-    Serial.print(MAXIMUM_VALUE);
+    Serial.print(heaterTempRange[1]);
     Serial.print(")\n");
   }
-  if (actualTemp2 < MINIMUM_VALUE || actualTemp2 > MAXIMUM_VALUE) {
+  if (actualTemp2 < heaterTempRange[2] || actualTemp2 > heaterTempRange[3]) {
     heaterFault();
-    Serial.print("ERROR: Termister temperature out of bounds! (");
-    Serial.print(MINIMUM_VALUE);
+    Serial.print("ERROR: Termister 1 temperature out of bounds! (");
+    Serial.print(heaterTempRange[2]);
     Serial.print(" <= ");
     Serial.print(actualTemp2);
     Serial.print(" <= ");
-    Serial.print(MAXIMUM_VALUE);
+    Serial.print(heaterTempRange[3]);
+    Serial.print(")\n");
+  }
+    if (actualTemp3 < heaterTempRange[4] || actualTemp3 > heaterTempRange[5]) {
+    heaterFault();
+    Serial.print("ERROR: Termister 2 temperature out of bounds! (");
+    Serial.print(heaterTempRange[4]);
+    Serial.print(" <= ");
+    Serial.print(actualTemp3);
+    Serial.print(" <= ");
+    Serial.print(heaterTempRange[5]);
     Serial.print(")\n");
   }
 
-  if ((time - tempCheckTime) > TEMP_CHECK_TIME * 1000) {
-    if (tempCheckTime > 0) {
-      float diffTemp = actualTemp - tempCheckTemp;
-      if (actualTemp < targetTemp && diffTemp < TEMP_HEATING_GAIN) {
+  if ((time - tempCheckTime) > heaterCheckTime * 1000) {
+    if (targetTemp == 0) {
+      // this is considered off, so no heating
+    } else if (abs(actualTemp - targetTemp) <= heaterTempHysteresis) {
+      // this is considered on target
+    } else if (tempCheckTime == 0) {
+      // wait for one more iteration to get the temp gain
+    } else {
+      float gainTemp = actualTemp - tempCheckTemp;
+      if (actualTemp < targetTemp && gainTemp < heaterTempGain) {
         heaterFault();
         Serial.print("ERROR: Heater not heating at expected rate!\n");
       }
