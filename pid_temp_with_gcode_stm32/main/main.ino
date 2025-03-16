@@ -184,6 +184,7 @@ void processCommandM(int codeNumber) {
       break;
     case 104: // Set Hotend Temperature
       if (GCode.HasWord('S')) { targetTemp = (int)GCode.GetWordValue('S'); }
+      Serial.print("ok\n");
       break;
     case 105: // Report Temperatures
       Serial.print("T0:");
@@ -230,23 +231,28 @@ void processCommandM(int codeNumber) {
     case 130: // Set PID P Value
       if (GCode.HasWord('S')) { kp = GCode.GetWordValue('S'); }
       pid.SetTunings(kp, ki, kd);
+      Serial.print("ok\n");
       break;
     case 131: // Set PID I Value
       if (GCode.HasWord('S')) { ki = GCode.GetWordValue('S'); }
       pid.SetTunings(kp, ki, kd);
+      Serial.print("ok\n");
       break;
     case 132: // Set PID D Value
       if (GCode.HasWord('S')) { kd = GCode.GetWordValue('S'); }
       pid.SetTunings(kp, ki, kd);
+      Serial.print("ok\n");
       break;
     case 155: // Temperature Auto-Report
       if (GCode.HasWord('S')) { tempAutoReportInterval = (int)GCode.GetWordValue('S') * 1000; }
+      Serial.print("ok\n");
       break;
     case 301: // Set Hotend PID
       if (GCode.HasWord('P')) { kp = GCode.GetWordValue('P'); }
       if (GCode.HasWord('I')) { ki = GCode.GetWordValue('I'); }
       if (GCode.HasWord('D')) { kd = GCode.GetWordValue('D'); }
       pid.SetTunings(kp, ki, kd);
+      Serial.print("ok\n");
       break;
     // case 303: // Run PID tuning
     //   if (!GCode.HasWord('S')) { 
@@ -267,9 +273,11 @@ void processCommandM(int codeNumber) {
     //   break;
     case 500: // Store current settings to EEPROM
       saveToEEPROM();
+      Serial.print("ok\n");
       break;
     case 501: // Read all parameters from EEPROM
       loadFromEEPROM();
+      Serial.print("ok\n");
       break;
     case 502: // Restore current settings to defaults
       // https://insideautomation.net/initial-settings-pid-controllers/
@@ -279,6 +287,7 @@ void processCommandM(int codeNumber) {
       heaterCheckTime = 20;
       heaterTempGain = 1.0;
       heaterTempHysteresis = 10.0;
+      Serial.print("ok\n");
       break;
     case 503: // Print the current settings
       Serial.print("kp = "); Serial.print(kp); Serial.print("\n");
@@ -295,6 +304,7 @@ void processCommandM(int codeNumber) {
       if (GCode.HasWord('P')) { heaterCheckTime = GCode.GetWordValue('P'); }
       if (GCode.HasWord('T')) { heaterTempGain = GCode.GetWordValue('T'); }
       if (GCode.HasWord('S')) { heaterTempHysteresis = GCode.GetWordValue('S'); }
+      Serial.print("ok\n");
       break;
     case 571: // Configure heater range (custom gcode!)
       if (!GCode.HasWord('H')) { 
@@ -304,6 +314,7 @@ void processCommandM(int codeNumber) {
         if (GCode.HasWord('H')) { heater = GCode.GetWordValue('H'); }
         if (GCode.HasWord('T')) { heaterTempRange[heater * 2] = GCode.GetWordValue('T'); } // min
         if (GCode.HasWord('P')) { heaterTempRange[(heater * 2)+1] = GCode.GetWordValue('T'); } // max
+        Serial.print("ok\n");
       }
       break;
     default:
