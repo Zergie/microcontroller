@@ -195,12 +195,8 @@ void processCommandM(int codeNumber) {
       Serial.print((int)heaterPower);
       Serial.print(" T1:");
       Serial.print(actualTemp1);
-      Serial.print(" /");
-      Serial.print((int)targetTemp);
       Serial.print(" T2:");
       Serial.print(actualTemp2);
-      Serial.print(" /");
-      Serial.print((int)targetTemp);
       Serial.print(" T3:");
       Serial.print(actualTemp3);
       Serial.print("\n");
