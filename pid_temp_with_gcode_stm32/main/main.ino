@@ -4,10 +4,11 @@
 #include <NTC_Thermistor.h>    // ^^
 #include <AverageThermistor.h> // ^^
 #include <QuickPID.h>          // https://github.com/Dlloydev/QuickPID
+#include "sTune.h"             // https://github.com/Dlloydev/sTune (but modified)
 
 // Firmware Info
 #define FIRMWARE_NAME           "Arduino Gcode Interpreter" 
-#define FIRMWARE_VERSION        "0.1"
+#define FIRMWARE_VERSION        "0.2"
 #define SOURCE_CODE_URL         "https://github.com/Zergie"
 #define PROTOCOL_VERSION        "1.0"
 #define MACHINE_TYPE            "DIY Toaster"
@@ -15,8 +16,8 @@
 #define TEMP_RESIDENCY_TIME     5  // Actual temperature must be close to target for this long (in seconds) before M109 returns success
 
 // Thermistor
-#define SENSOR_PIN1              PA6
-#define SENSOR_PIN2              PA0
+#define SENSOR_PIN1             PA6
+#define SENSOR_PIN2             PA0
 #define REFERENCE_RESISTANCE    4700.0
 #define NOMINAL_RESISTANCE      100000.0
 #define NOMINAL_TEMPERATURE     25.0
@@ -43,11 +44,11 @@ float actualTemp1 = 0;
 float actualTemp2 = 0;
 float actualTemp3 = 0;
 float heaterPower = 0;
-double tempAutoReportInterval = 0;
+uint32_t tempAutoReportInterval = 0;
 double tempAutoReportTime = 0;
 uint32_t tempCheckTime = 0;
 float tempCheckTemp = 0;
-uint8_t pidEnabled = 1;
+uint8_t pidTuningEnabled = 0;
 
 // Heater Fault Check
 uint32_t heaterCheckTime = 0.0;   // This controls heater verification during initial heating. (in seconds) //saved in eeprom
@@ -62,6 +63,7 @@ Thermistor* thermistor1;
 Thermistor* thermistor2;
 QuickPID pid = QuickPID(&actualTemp, &heaterPower, &targetTemp);
 HardwareTimer *MyTim = new HardwareTimer(TIM2);
+sTune tuner = sTune(&actualTemp, &heaterPower, tuner.ZN_PID, tuner.directIP, tuner.printOFF);
 
 void saveToEEPROM() {
   int address = 0;
@@ -140,19 +142,14 @@ void setup() {
   while(!Serial);
 }
 
-void computePid() {
-  // read from inputs
+void readTemps() {
   actualTemp1 = thermistor1->readCelsius();
   actualTemp2 = thermistor2->readCelsius();
-  // actualTemp3 = thermistor2->readCelsius();
+  actualTemp3 = thermistor2->readCelsius();
   actualTemp = (actualTemp1 + actualTemp2) / 2;
+}
 
-  // calculate
-  if (pidEnabled) {
-    pid.Compute();
-  }
-  
-  // write to 
+void setHeater() {
   MyTim->setCaptureCompare(1, (uint32_t)heaterPower, RESOLUTION_8B_COMPARE_FORMAT);
   MyTim->resume();
 }
@@ -175,12 +172,9 @@ void processCommandG(int codeNumber) {
 void processCommandM(int codeNumber) {
   switch (codeNumber) {
     case 1: // Test
-      if (GCode.HasWord('S')) { heaterPower = (int)GCode.GetWordValue('S'); }
-      tempAutoReportInterval = 1000;
-      pidEnabled = 0;
       break;
     case 2: // Program End
-      NVIC_SystemReset();
+      HAL_NVIC_SystemReset();
       break;
     case 104: // Set Hotend Temperature
       if (GCode.HasWord('S')) { targetTemp = (int)GCode.GetWordValue('S'); }
@@ -210,17 +204,17 @@ void processCommandM(int codeNumber) {
       waitTemp = targetTemp;
       break;
     case 115: // Firmware Info
-      Serial.print("FIRMWARE_NAME:");
+      Serial.print("FIRMWARE_NAME: ");
       Serial.print(FIRMWARE_NAME);
       Serial.print(" v");
       Serial.print(FIRMWARE_VERSION);
-      Serial.print(" SOURCE_CODE_URL:");
+      Serial.print(" SOURCE_CODE_URL: ");
       Serial.print(SOURCE_CODE_URL);
-      Serial.print(" PROTOCOL_VERSION:");
+      Serial.print(" PROTOCOL_VERSION: ");
       Serial.print(PROTOCOL_VERSION);
-      Serial.print(" MACHINE_TYPE:");
+      Serial.print(" MACHINE_TYPE: ");
       Serial.print(MACHINE_TYPE);
-      Serial.print(" UUID:");
+      Serial.print(" UUID: ");
       Serial.print(UUID);
       Serial.print("\n");
       break;
@@ -240,7 +234,7 @@ void processCommandM(int codeNumber) {
       Serial.print("ok\n");
       break;
     case 155: // Temperature Auto-Report
-      if (GCode.HasWord('S')) { tempAutoReportInterval = (int)GCode.GetWordValue('S') * 1000; }
+      if (GCode.HasWord('S')) { tempAutoReportInterval = (float)GCode.GetWordValue('S') * 1000; }
       Serial.print("ok\n");
       break;
     case 301: // Set Hotend PID
@@ -250,23 +244,18 @@ void processCommandM(int codeNumber) {
       pid.SetTunings(kp, ki, kd);
       Serial.print("ok\n");
       break;
-    // case 303: // Run PID tuning
-    //   if (!GCode.HasWord('S')) { 
-    //     Serial.print("Parameter S is required!\n");
-    //   } else if (!GCode.HasWord('C')) { 
-    //     Serial.print("Parameter C is required!\n");
-    //   } else {
-    //     // todo
-    //     Serial.print("Kp: ");
-    //     Serial.print(kp);
-    //     Serial.print(" Ki: ");
-    //     Serial.print(ki);
-    //     Serial.print(" Kd: ");
-    //     Serial.print(kd);
-    //     Serial.print("\n");
-    //     Serial.print("PID Autotune finished!\n");
-    //   }
-    //   break;
+    case 303: // Run PID tuning
+      if (!GCode.HasWord('S')) { 
+        Serial.print("Parameter S is required!\n");
+      } else if (!GCode.HasWord('C')) { 
+        Serial.print("Parameter C is required!\n");
+      } else {
+        tuner.Configure(heaterTempRange[1] - heaterTempRange[0], 255, 0, 1, 500, 10, 500);
+        tuner.SetEmergencyStop(heaterTempRange[1]);
+        targetTemp = (int)GCode.GetWordValue('S');
+        pidTuningEnabled = (int)GCode.GetWordValue('C');
+      }
+      break;
     case 500: // Store current settings to EEPROM
       saveToEEPROM();
       Serial.print("ok\n");
@@ -286,15 +275,15 @@ void processCommandM(int codeNumber) {
       Serial.print("ok\n");
       break;
     case 503: // Print the current settings
-      Serial.print("kp = "); Serial.print(kp); Serial.print("\n");
-      Serial.print("ki = "); Serial.print(ki); Serial.print("\n");
-      Serial.print("kd = "); Serial.print(kd); Serial.print("\n");
-      Serial.print("Heater Check Time = "); Serial.print(heaterCheckTime); Serial.print("\n");
-      Serial.print("Heater Temperatur Gain = "); Serial.print(heaterTempGain); Serial.print("\n");
-      Serial.print("Heater Temperatur Hysteresis = "); Serial.print(heaterTempHysteresis); Serial.print("\n");
-      Serial.print("Heater Temperatur Range 0 = "); Serial.print(heaterTempRange[0]); Serial.print(" ... "); Serial.print(heaterTempRange[1]); Serial.print("\n");
-      Serial.print("Heater Temperatur Range 1 = "); Serial.print(heaterTempRange[2]); Serial.print(" ... "); Serial.print(heaterTempRange[3]); Serial.print("\n");
-      Serial.print("Heater Temperatur Range 2 = "); Serial.print(heaterTempRange[4]); Serial.print(" ... "); Serial.print(heaterTempRange[5]); Serial.print("\n");
+      Serial.print("kp: "); Serial.print(kp); Serial.print("\n");
+      Serial.print("ki: "); Serial.print(ki); Serial.print("\n");
+      Serial.print("kd: "); Serial.print(kd); Serial.print("\n");
+      Serial.print("Heater Check Time: "); Serial.print(heaterCheckTime); Serial.print("\n");
+      Serial.print("Heater Temperatur Gain: "); Serial.print(heaterTempGain); Serial.print("\n");
+      Serial.print("Heater Temperatur Hysteresis: "); Serial.print(heaterTempHysteresis); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 0: "); Serial.print(heaterTempRange[0]); Serial.print(" - "); Serial.print(heaterTempRange[1]); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 1: "); Serial.print(heaterTempRange[2]); Serial.print(" - "); Serial.print(heaterTempRange[3]); Serial.print("\n");
+      Serial.print("Heater Temperatur Range 2: "); Serial.print(heaterTempRange[4]); Serial.print(" - "); Serial.print(heaterTempRange[5]); Serial.print("\n");
       break;
     case 570: // Configure heater fault detection (custom gcode!)
       if (GCode.HasWord('P')) { heaterCheckTime = GCode.GetWordValue('P'); }
@@ -319,19 +308,7 @@ void processCommandM(int codeNumber) {
   }
 }
 
-void heaterFault() {
-  heaterPower = 0;
-  targetTemp = 0;
-  waitTemp = 0;
-}
-
-void loop() {
-  uint32_t time = millis();
-
-  computePid();
-  // Serial.print(".");
-
-  // thermal protection
+void termalProtection(uint32_t time) {
   if (actualTemp1 < heaterTempRange[0] || actualTemp1 > heaterTempRange[1]) {
     heaterFault();
     Serial.print("ERROR: Termister 0 temperature out of bounds! (");
@@ -380,7 +357,20 @@ void loop() {
     tempCheckTemp = actualTemp;
     tempCheckTime = time;
   }
+}
 
+void heaterFault() {
+  heaterPower = 0;
+  targetTemp = 0;
+  waitTemp = 0;
+}
+
+void loop() {
+  // Serial.print(".");
+  uint32_t time = millis();
+  readTemps();
+
+  termalProtection(time);
 
   if (tempAutoReportInterval > 0) {
     if (tempAutoReportTime == 0 || (time - tempAutoReportTime) > tempAutoReportInterval) {
@@ -389,28 +379,63 @@ void loop() {
     }
   }
 
-  if (dwellTime > 0) {
-    if (time > dwellTime) {
-      dwellTime = 0;
-      Serial.print("ok\n");
+  if (pidTuningEnabled) {
+    setHeater();
+
+    switch (tuner.Run()) {
+      case tuner.sample: // active once per sample during test
+        readTemps();
+        break;
+      
+      case tuner.runPid: // active once per sample after tunings
+        readTemps();
+        pid.Compute();
+        break;
+
+      case tuner.tunings: // active just once when sTune is done
+        kp = tuner.GetKp();
+        ki = tuner.GetKi();
+        kd = tuner.GetKd();
+        Serial.print("Kp: ");
+        Serial.print(kp);
+        Serial.print(" Ki: ");
+        Serial.print(ki);
+        Serial.print(" Kd: ");
+        Serial.print(kd);
+        Serial.print("\n");
+        Serial.print("PID Autotune finished!\n");
+        pidTuningEnabled--;
+        heaterPower = 0;
+        targetTemp = 0;
+        break;
     }
-  } else if (waitTemp > 0) {
-    if (actualTemp < waitTemp) {
-      waitTempTime = 0;
-    } else if (waitTempTime == 0) {
-      waitTempTime = time;
-    } else if (time - waitTempTime >= TEMP_RESIDENCY_TIME * 1000) {
-      waitTemp = 0;
-      waitTempTime = 0;
-      Serial.print("ok\n");
-    }
-  } else if (!Serial.available() > 0 || !GCode.AddCharToLine(Serial.read()) || GCode.blockDelete) {
-   //pass 
-  } else if (GCode.HasWord('M')) {
-    processCommandM((int)GCode.GetWordValue('M'));
-  } else if (GCode.HasWord('G')) {
-    processCommandG((int)GCode.GetWordValue('G'));
   } else {
-    Serial.print("Unknown command!\n");
+    pid.Compute();
+    setHeater();
+
+    if (dwellTime > 0) {
+      if (time > dwellTime) {
+        dwellTime = 0;
+        Serial.print("ok\n");
+      }
+    } else if (waitTemp > 0) {
+      if (actualTemp < waitTemp) {
+        waitTempTime = 0;
+      } else if (waitTempTime == 0) {
+        waitTempTime = time;
+      } else if (time - waitTempTime >= TEMP_RESIDENCY_TIME * 1000) {
+        waitTemp = 0;
+        waitTempTime = 0;
+        Serial.print("ok\n");
+      }
+    } else if (!Serial.available() > 0 || !GCode.AddCharToLine(Serial.read()) || GCode.blockDelete) {
+    //pass 
+    } else if (GCode.HasWord('M')) {
+      processCommandM((int)GCode.GetWordValue('M'));
+    } else if (GCode.HasWord('G')) {
+      processCommandG((int)GCode.GetWordValue('G'));
+    } else {
+      Serial.print("Unknown command!\n");
+    }
   }
 }
