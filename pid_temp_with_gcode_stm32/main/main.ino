@@ -8,7 +8,7 @@
 
 // Firmware Info
 #define FIRMWARE_NAME           "Arduino Gcode Interpreter" 
-#define FIRMWARE_VERSION        "0.2"
+#define FIRMWARE_VERSION        "0.3"
 #define SOURCE_CODE_URL         "https://github.com/Zergie"
 #define PROTOCOL_VERSION        "1.0"
 #define MACHINE_TYPE            "DIY Toaster"
@@ -18,6 +18,7 @@
 // Thermistor
 #define SENSOR_PIN1             PA6
 #define SENSOR_PIN2             PA0
+#define SENSOR_PIN3             PA5
 #define REFERENCE_RESISTANCE    4700.0
 #define NOMINAL_RESISTANCE      100000.0
 #define NOMINAL_TEMPERATURE     25.0
@@ -54,13 +55,14 @@ uint8_t pidTuningEnabled = 0;
 uint32_t heaterCheckTime = 0.0;   // This controls heater verification during initial heating. (in seconds) //saved in eeprom
 float heaterTempGain = 0.0;       // The minimum temperature (in Celsius) that the heater must increase by during the check_gain_time check. //saved in eeprom
 float heaterTempHysteresis = 0.0; // The maximum temperature difference (in Celsius) to a target temperature that is considered in range of the target. //saved in eeprom
-// float heaterTempRange[6] = { 0.0, 300.0, 0.0, 300.0, 0.0, 80.0 }; // {min, max, min, max, ...}
-float heaterTempRange[6] = { -300.0, 300.0, -300.0, 300.0, -300.0, 80.0 }; // {min, max, min, max, ...}
+float heaterTempRange[6] = { 0.0, 300.0, 0.0, 300.0, 0.0, 80.0 }; // {min, max, min, max, ...}
+//float heaterTempRange[6] = { -300.0, 300.0, -300.0, 300.0, -300.0, 80.0 }; // {min, max, min, max, ...}
 
 HardwareSerial Serial = HardwareSerial(PA10, PA9);
 GCodeParser GCode = GCodeParser();
 Thermistor* thermistor1;
 Thermistor* thermistor2;
+Thermistor* thermistor3;
 QuickPID pid = QuickPID(&actualTemp, &heaterPower, &targetTemp);
 HardwareTimer *MyTim = new HardwareTimer(TIM2);
 sTune tuner = sTune(&actualTemp, &heaterPower, tuner.ZN_PID, tuner.directIP, tuner.printOFF);
@@ -105,7 +107,7 @@ void setup() {
   analogReadResolution(12);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(RELAY_PIN, OUTPUT);
-  Thermistor* originThermistor1 = new NTC_Thermistor(
+  thermistor1 = new NTC_Thermistor(
     SENSOR_PIN1,
     REFERENCE_RESISTANCE,
     NOMINAL_RESISTANCE,
@@ -113,12 +115,7 @@ void setup() {
     BETA_VALUE,
     ANALOG_RESOLUTION
   );
-  thermistor1 = new AverageThermistor(
-    originThermistor1,
-    READINGS_NUMBER,
-    DELAY_TIME
-  );
-  Thermistor* originThermistor2 = new NTC_Thermistor(
+  thermistor2 = new NTC_Thermistor(
     SENSOR_PIN2,
     REFERENCE_RESISTANCE,
     NOMINAL_RESISTANCE,
@@ -126,10 +123,13 @@ void setup() {
     BETA_VALUE,
     ANALOG_RESOLUTION
   );
-  thermistor2 = new AverageThermistor(
-    originThermistor2,
-    READINGS_NUMBER,
-    DELAY_TIME
+  thermistor3 = new NTC_Thermistor(
+    SENSOR_PIN3,
+    REFERENCE_RESISTANCE,
+    NOMINAL_RESISTANCE,
+    NOMINAL_TEMPERATURE,
+    BETA_VALUE,
+    ANALOG_RESOLUTION
   );
   loadFromEEPROM();
   pid.SetOutputLimits(0, 255);
@@ -145,7 +145,7 @@ void setup() {
 void readTemps() {
   actualTemp1 = thermistor1->readCelsius();
   actualTemp2 = thermistor2->readCelsius();
-  actualTemp3 = thermistor2->readCelsius();
+  actualTemp3 = thermistor3->readCelsius();
   actualTemp = (actualTemp1 + actualTemp2) / 2;
 }
 
@@ -178,6 +178,7 @@ void processCommandM(int codeNumber) {
       break;
     case 104: // Set Hotend Temperature
       if (GCode.HasWord('S')) { targetTemp = (int)GCode.GetWordValue('S'); }
+      tempCheckTime = millis();
       Serial.print("ok\n");
       break;
     case 105: // Report Temperatures
@@ -202,6 +203,7 @@ void processCommandM(int codeNumber) {
     case 109: // Wait for Hotend Temperature
       if (GCode.HasWord('S')) { targetTemp = (int)GCode.GetWordValue('S'); }
       waitTemp = targetTemp;
+      tempCheckTime = millis();
       break;
     case 115: // Firmware Info
       Serial.print("FIRMWARE_NAME: ");
@@ -244,7 +246,7 @@ void processCommandM(int codeNumber) {
       pid.SetTunings(kp, ki, kd);
       Serial.print("ok\n");
       break;
-    case 303: // Run PID tuning
+    case 303: // Run PID tuning // not working
       if (!GCode.HasWord('S')) { 
         Serial.print("Parameter S is required!\n");
       } else if (!GCode.HasWord('C')) { 
@@ -254,6 +256,7 @@ void processCommandM(int codeNumber) {
         tuner.SetEmergencyStop(heaterTempRange[1]);
         targetTemp = (int)GCode.GetWordValue('S');
         pidTuningEnabled = (int)GCode.GetWordValue('C');
+        tempCheckTime = millis();
       }
       break;
     case 500: // Store current settings to EEPROM
@@ -266,9 +269,9 @@ void processCommandM(int codeNumber) {
       break;
     case 502: // Restore current settings to defaults
       // https://insideautomation.net/initial-settings-pid-controllers/
-      kp = 1.0;
-      ki = 3.0;
-      kd = 0.2;
+      kp = 25.0;
+      ki = 1.0;
+      kd = 110.0;
       heaterCheckTime = 20;
       heaterTempGain = 1.0;
       heaterTempHysteresis = 10.0;
