@@ -1,0 +1,73 @@
+[
+  { "code": "G4", "description": "Dwell",
+    "parameters": [
+      {"name": "P", "description": "Time to wait, in milliseconds (In Teacup, P0, wait until all previous moves are finished)"},
+      {"name": "S", "description": "Time to wait, in seconds (Only on Repetier, Marlin, Prusa, Smoothieware, and RepRapFirmware 1.16 and later)"}]
+  },
+  { "code": "M104", "description": "Set Hotend Temperature",
+    "parameters": [
+      {"name": "S", "description": "Target temperature"}]
+  },
+  { "code": "M105", "description": "Report Temperatures",
+    "parameters": []
+  },
+  { "code": "M108", "description": "Cancel Heating //Breaks out of an M109 wait-for-temperature loop",
+    "parameters": []
+  },
+  { "code": "M109", "description": "Wait for Hotend Temperature",
+    "parameters": [
+      {"name": "S", "description": "minimum target temperature, waits until heating"}]
+  },
+  { "code": "M115", "description": "Firmware Info",
+    "parameters": []
+  },
+  { "code": "M130", "description": "Set PID P Value",
+    "parameters": [
+      {"name": "S", "description": "proportional (Kp)"}]
+  },
+  { "code": "M131", "description": "Set PID I Value",
+    "parameters": [
+      {"name": "S", "description": "integral (Ki)"}]
+  },
+  { "code": "M132", "description": "Set PID D Value",
+    "parameters": [
+      {"name": "S", "description": "derivative (Kd)"}]
+  },
+  { "code": "M155", "description": "Temperature Auto-Report",
+    "parameters": [
+      {"name": "S", "description": "auto-reporting interval in seconds"}]
+  },
+  { "code": "M2", "description": "Program End",
+    "parameters": []
+  },
+  { "code": "M301", "description": "Set Hotend PID",
+    "parameters": [
+      {"name": "D", "description": "derivative (Kd)"},
+      {"name": "I", "description": "integral (Ki)"},
+      {"name": "P", "description": "proportional (Kp)"}]
+  },
+  { "code": "M500", "description": "Store current settings to EEPROM",
+    "parameters": []
+  },
+  { "code": "M501", "description": "Read all parameters from EEPROM",
+    "parameters": []
+  },
+  { "code": "M502", "description": "Restore current settings to defaults",
+    "parameters": []
+  },
+  { "code": "M503", "description": "Print the current settings",
+    "parameters": []
+  },
+  { "code": "M570", "description": "Configure heater fault detection (custom gcode!)",
+    "parameters": [
+      {"name": "P", "description": "heater check time"},
+      {"name": "S", "description": "heater temperature hysteresis"},
+      {"name": "T", "description": "heater temperature gain"}]
+  },
+  { "code": "M571", "description": "Configure heater range (custom gcode!)",
+    "parameters": [
+      {"name": "H", "description": "heater number"},
+      {"name": "P", "description": "max temperature"},
+      {"name": "T", "description": "min temperature"}]
+  }
+]
