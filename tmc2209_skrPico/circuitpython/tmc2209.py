@@ -1,21 +1,118 @@
 import busio
+import digitalio
 import struct
 import time
+import microcontroller
+import pwmio
+import pulseio
+import array
+import rp2pio
+import adafruit_pioasm
 
 # datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/TMC2209_datasheet_rev1.09.pdf
 
 class TMC2209:
+    STEP_BUFFER_SIZE = 256 # Number of steps to buffer for each move
+
     """Class for TMC2209 stepper driver communication"""
-    def __init__(self, addr, tx, rx, baudrate=115200 , verbose=False):
+    def __init__(self, addr, tx, rx, en, step, dir, baudrate=115200, verbose=False):
+        self.verbose = verbose
         self.addr = addr
         self.uart = busio.UART(tx=tx, rx=rx, baudrate=baudrate, bits=8, parity=None, stop=1, timeout=20000/baudrate)
         self.uart.reset_input_buffer()
-        self.verbose = verbose
+        
+        self.en_pin = digitalio.DigitalInOut(en)
+        self.dir_pin = digitalio.DigitalInOut(dir)
 
-    def deinit(self):
+        self.en_pin.direction = digitalio.Direction.OUTPUT
+        self.dir_pin.direction = digitalio.Direction.OUTPUT
+
+        self.en_pin.value = True  # Disable stepper driver initially
+        self.dir_pin.value = True  # Set initial direction to CW
+
+        self._is_enabled = False
+        self._direction = 1
+
+        self._pio = None
+        self._step = step
+        self.step_pin = None
+    
+    def __del__(self):
         if self.uart:
             self.uart.deinit()
             self.uart = None
+        self.disable()  # Ensure the driver is disabled on deletion
+
+    def enable(self):
+        self.en_pin.value = False
+        self._is_enabled = True
+
+    def disable(self):
+        self.en_pin.value = True
+        self._is_enabled = False
+
+    def _setup_move(self, speed):
+        if not self._is_enabled:
+            self.enable()
+
+        if speed < 0:
+            direction = -1
+            speed = -speed
+        else:
+            direction = 1
+        
+        if direction != self._direction:
+            self.dir_pin.value = not self.dir_pin.value 
+            self._direction = direction
+        return speed
+
+    def move(self, steps=1, speed=200):
+        speed = self._setup_move(speed)
+        
+        if not self.step_pin is None:
+            self.step_pin.deinit()
+            self.step_pin = None
+
+        if self._pio is None:
+            self._pio = rp2pio.StateMachine(
+                adafruit_pioasm.assemble("""
+.program step
+    out x, 32         ; fetch delay
+    out y, 32         ; fetch steps
+loop:
+    set pins, 1 [20]  ; Turn STEP on (100ns pulse)
+    set pins, 0       ; Turn STEP off
+    mov isr, x        ; Move delay to ISR
+delay:
+    jmp x-- delay     ; Delay for x cycles
+    mov x, isr        ; Restore x from ISR
+    jmp y-- loop      ; Loop until all steps are done
+"""),
+            frequency=0,
+            auto_pull=True,
+            first_set_pin=self._step,
+        )
+        
+        delay = self._pio.frequency // speed
+        while steps > 0:
+            data = array.array("I", [delay, steps])
+            self._pio.write(data)
+            steps = min(0, steps - 0xFFFFFFFF)
+
+    def run(self, speed=200):
+        speed = self._setup_move(speed)
+        
+        if not self._pio is None:
+            self._pio.deinit()
+            self._pio = None
+
+        if self.step_pin is None:
+            self.step_pin = pwmio.PWMOut(self._step, frequency=50, duty_cycle=0, variable_frequency=True)
+
+        frequency = speed
+        self.step_pin.frequency = frequency
+        # Set duty_cycle for a 100 ns pulse width based on frequency
+        self.step_pin.duty_cycle = min(max(int((100e-9 / (1 / self.step_pin.frequency)) * 65535), 1), 65535)
 
     def _print(self, message):
         if self.verbose:
