@@ -163,7 +163,6 @@ delay:
             ramp_steps = max(1, int(ramp_time / 0.01))
         
         def set_speed(speed, duration):
-            print(f"Setting speed: {int(speed)} steps/s, Duration: {duration if duration >= 0 else 'constant'}")
             self.step_pin.frequency = int(speed)
             self.step_pin.duty_cycle = min(max(int((100e-9 / (1 / self.step_pin.frequency)) * 65535), 1), 65535)
             if duration > 0:
