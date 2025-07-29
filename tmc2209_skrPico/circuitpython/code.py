@@ -37,23 +37,19 @@ tmc.write_IHOLD_IRUN(ihold=5, irun=26, iholddelay=1)
 #         print("")
 #         break
 
-microsteps = 64
-print(f"Setting microsteps to {microsteps}")
+microsteps = 256
 tmc.write_CHOPCONF(toff=5, microsteps=microsteps, intpol=1)
+speed = 15_000 * microsteps 
+accel = 200  # Acceleration in steps per second^2
+print(f"Setting microsteps to {microsteps}")
+print(f"Setting speed to {speed} steps/s")
+print(f"Setting acceleration to {accel} steps/s^2")
+input(f"Press Enter to start.")
 
-speed = 100000 #128000 * 3
-for _ in range(2):
-    steps = []
+tmc.run(speed=speed, acceleration=accel)
+print(f"Running at speed: {speed / microsteps / STEPS_PER_REV * 60} rpm")
 
-    steps = STEPS_PER_REV * microsteps
-    tmc.move(steps=steps, speed=speed,)
-    print(f"Steps: {steps}, Speed: {speed}")
-    # tmc.run(speed=speed)
-
-    
-    speed += 25000
-    time.sleep(1)
-
+input(f"Press Enter to stop.")
 tmc.disable()
-print("Done stepping")
-input("Press Enter to exit...")
+
+input("Press Enter to exit.")

@@ -12,7 +12,7 @@ import adafruit_pioasm
 # datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/TMC2209_datasheet_rev1.09.pdf
 
 class TMC2209:
-    STEP_BUFFER_SIZE = 256 # Number of steps to buffer for each move
+    STEP_BUFFER_SIZE = 1024 # Number of steps to buffer for each move
 
     """Class for TMC2209 stepper driver communication"""
     def __init__(self, addr, tx, rx, en, step, dir, baudrate=115200, verbose=False):
@@ -66,7 +66,7 @@ class TMC2209:
             self._direction = direction
         return speed
 
-    def move(self, steps=1, speed=200):
+    def move(self, steps, speed, acceleration=1000, iterations=10):
         speed = self._setup_move(speed)
         
         if not self.step_pin is None:
@@ -88,18 +88,63 @@ delay:
     mov x, isr        ; Restore x from ISR
     jmp y-- loop      ; Loop until all steps are done
 """),
-            frequency=0,
+            frequency=microcontroller.cpu.frequency // 4,
             auto_pull=True,
             first_set_pin=self._step,
         )
         
-        delay = self._pio.frequency // speed
-        while steps > 0:
-            data = array.array("I", [delay, steps])
-            self._pio.write(data)
-            steps = min(0, steps - 0xFFFFFFFF)
+        # Generate acceleration profile (trapezoidal)
+        # accceleration: steps/sec^2, speed: max steps/sec, steps: total steps
+        # Calculate ramp up/down steps
+        if acceleration == 0:
+            ramp_steps = 0
+            flat_steps = steps
+        else:
+            ramp_steps = int(speed**2 / (2 * acceleration * iterations))
+            ramp_steps = min(ramp_steps, steps // 2)
+            flat_steps = steps - 2 * ramp_steps
 
-    def run(self, speed=200):
+        print(f"Ramp steps: {ramp_steps}, Flat steps: {flat_steps}, Total steps: {steps}, Speed: {speed}, Acceleration: {acceleration}")
+        
+        # Stream step data to PIO in chunks to avoid memory issues
+        def step_profile():
+
+            # Ramp up
+            for i in range(1, ramp_steps, iterations):
+                current_speed = int((acceleration * (i + 1))**0.5)
+                current_speed = min(current_speed, speed)
+                delay = max(1, self._pio.frequency // current_speed)
+                yield delay
+                yield iterations - 1
+
+            # Constant speed
+            if flat_steps > 0:
+                delay = max(1, self._pio.frequency // speed)
+                yield delay
+                yield flat_steps - 1
+
+            # Ramp down
+            for i in range(ramp_steps, 1, -iterations):
+                current_speed = int((acceleration * i)**0.5)
+                current_speed = min(current_speed, speed)
+                delay = max(1, self._pio.frequency // current_speed)
+                yield delay
+                yield iterations - 1
+
+        # Stream data in buffer-sized chunks
+        buf = array.array("I")
+        count = 0
+        for value in step_profile():
+            buf.append(value)
+            count += 1
+            if count >= self.STEP_BUFFER_SIZE:
+                self._pio.background_write(buf)
+                buf = array.array("I")
+                count = 0
+        if count > 0:
+            self._pio.write(buf)
+
+    def run(self, speed, acceleration=1000):
         speed = self._setup_move(speed)
         
         if not self._pio is None:
@@ -109,10 +154,30 @@ delay:
         if self.step_pin is None:
             self.step_pin = pwmio.PWMOut(self._step, frequency=50, duty_cycle=0, variable_frequency=True)
 
-        frequency = speed
-        self.step_pin.frequency = frequency
-        # Set duty_cycle for a 100 ns pulse width based on frequency
-        self.step_pin.duty_cycle = min(max(int((100e-9 / (1 / self.step_pin.frequency)) * 65535), 1), 65535)
+        # Generate acceleration profile
+        if acceleration == 0 or speed == 0:
+            ramp_steps = 0
+            ramp_time = 0
+        else:
+            ramp_time = speed // acceleration // 1000
+            ramp_steps = max(1, int(ramp_time / 0.1))
+        
+        speeds = []
+
+        # Ramp up
+        for i in range(1, ramp_steps):
+            speeds.append((speed / ramp_steps * i, ramp_time / ramp_steps))
+        
+        # Constant speed
+        speeds.append((speed, -1))
+
+        # Run the acceleration profile
+        for speed, duration in speeds:
+            self.step_pin.frequency = int(speed)
+            self.step_pin.duty_cycle = min(max(int((100e-9 / (1 / self.step_pin.frequency)) * 65535), 1), 65535)
+            if duration > 0:
+                time.sleep(duration)
+
 
     def _print(self, message):
         if self.verbose:
