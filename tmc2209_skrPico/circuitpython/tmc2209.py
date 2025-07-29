@@ -160,23 +160,23 @@ delay:
             ramp_time = 0
         else:
             ramp_time = speed // acceleration // 1000
-            ramp_steps = max(1, int(ramp_time / 0.1))
+            ramp_steps = max(1, int(ramp_time / 0.01))
         
-        speeds = []
-
-        # Ramp up
-        for i in range(1, ramp_steps):
-            speeds.append((speed / ramp_steps * i, ramp_time / ramp_steps))
-        
-        # Constant speed
-        speeds.append((speed, -1))
-
-        # Run the acceleration profile
-        for speed, duration in speeds:
+        def set_speed(speed, duration):
+            print(f"Setting speed: {int(speed)} steps/s, Duration: {duration if duration >= 0 else 'constant'}")
             self.step_pin.frequency = int(speed)
             self.step_pin.duty_cycle = min(max(int((100e-9 / (1 / self.step_pin.frequency)) * 65535), 1), 65535)
             if duration > 0:
                 time.sleep(duration)
+
+        # Ramp up (ease-in: accelerate quickly at first, then slower)
+        for i in range(1, ramp_steps):
+            # Use a square root profile for acceleration (ease-in)
+            factor = (i / ramp_steps) ** 0.5
+            set_speed(speed * factor, ramp_time / ramp_steps)
+        
+        # Constant speed
+        set_speed(speed, -1)
 
 
     def _print(self, message):
