@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#30343d">
+  <meta name="application-name" content="RP2040 USB Webserver">
+  <title>Pico · GPIO</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <div class="page-scroll" tabindex="0" aria-label="Scroll header and Pico board">
+    <header class="topbar">
+      <h1>Pico <span>GPIO</span></h1>
+      <div id="message" class="connection" role="status" aria-live="polite">Connecting …</div>
+      <button id="refresh" class="icon-button" aria-label="Refresh status">↻</button>
+    </header>
+
+    <button id="led-select" class="led-card" data-select="25" aria-pressed="true">
+      <span class="led-dot" aria-hidden="true"></span>
+      <span>Onboard LED <small>GP25</small></span>
+      <span id="led-status" class="led-value">…</span>
+    </button>
+
+    <section class="pin-section" aria-label="Pico pinout, USB at the top">
+      <div class="pin-scroll">
+        <div class="pinout">
+          <div class="board-top">
+            <span class="usb-port" role="img" aria-label="Micro-USB port, top view at the top of the board">
+              <!-- USB geometry: Raspberry Pi documentation, pico-pinout.svg (see README). -->
+              <svg viewBox="307.5 95.5 57 47" aria-hidden="true" focusable="false">
+                <path class="usb-source-base" d="M360.4005737,141.0912323h-48.6379395c-0.822937,0-1.4725952-0.6496582-1.4725952-1.4725494v-36.2077637 c0-0.8228989,0.6496582-1.4725647,1.4725952-1.4725647h48.6379395c0.8229065,0,1.4725647,0.6496658,1.4725647,1.4725647 v36.2077637C361.8731384,140.4415741,361.1801758,141.0912323,360.4005737,141.0912323z"/>
+                <path class="usb-source-metal" d="M313.9714966,96.9143066c-0.6496582,0-1.2127075,0.4331055-1.4292603,1.0394516l-0.8229065,2.6852646 l-1.4725952,1.4725647v37.5503693c0,0.8229065,0.6496887,1.4725647,1.4725952,1.4725647h9.0086365 c0.389801,0,0.7362671-0.3464813,0.7362671-0.7362823v-2.1655426c0-0.5197296-0.3031616-1.039444-0.7796021-1.2993164 l-5.0240479-2.7285767c-0.4764099-0.2598572-0.7796021-0.7362823-0.7796021-1.2993164v-2.1655273h3.248291v-2.4687195 h5.0673218v2.4687195h2.9884644v5.1106567c0,0.8228912,0.6496582,1.4725647,1.4725647,1.4725647h2.3821106v-2.6419678 h11.9104309v2.6419678h2.3820801c0.822937,0,1.4725952-0.6496735,1.4725952-1.4725647v-5.1106567h2.9884338v-2.4687195 h5.0673523v2.4687195h3.248291v2.1655273c0,0.5197296-0.3031616,1.0394592-0.7796021,1.2993164l-5.0240479,2.7285767 c-0.4764099,0.2598724-0.7796021,0.7362823-0.7796021,1.2993164v2.1655426 c0,0.3897858,0.3464966,0.7362823,0.7362671,0.7362823h9.0086365c0.8229065,0,1.4725647-0.6496582,1.4725647-1.4725647 v-37.5070724l-1.4725647-1.4725647l-0.8229065-2.685257c-0.1732483-0.6063538-0.7796326-1.0394592-1.4292908-1.0394592 L313.9714966,96.9143066L313.9714966,96.9143066z"/>
+                <path class="usb-source-metal" d="M311.8925781,104.4070587c-0.6496582-0.8662109-1.2993164-1.7324295-1.9056702-2.7285767 c-0.3031616-0.4764175-0.5630798-1.0394516-0.7796326-1.6024933s-0.3464966-1.1260834-0.4764099-1.6891174 c-0.0865784-0.4764175,0.2165527-0.9528351,0.6929626-1.0394516 c0.4331055-0.0866241,0.8662109,0.1732407,0.9961853,0.5630417l0,0 c0.3464966,0.9528351,0.7362366,1.7324295,1.3426208,2.5120239c0.6063538,0.7795944,1.3426208,1.5158691,2.0355835,2.2521515 l0,0c0.5196838,0.5197296,0.4763794,1.3426361,0,1.8623657c-0.5197144,0.519722-1.3426208,0.4764175-1.8623962,0 C311.9792175,104.4936829,311.9358826,104.4503708,311.8925781,104.4070587z"/>
+                <path class="usb-source-metal" d="M358.2783508,102.6746292c0.7362366-0.7362823,1.4725647-1.4725571,2.0355835-2.2521515 c0.6063538-0.7362823,1.0394592-1.5591888,1.3426208-2.5120239l0,0 c0.1732483-0.4764175,0.6496582-0.6929779,1.1260681-0.5630417c0.4331055,0.1299362,0.6496582,0.5630417,0.5630493,0.9961472 c-0.1299438,0.5630417-0.2598572,1.1260834-0.4764099,1.6891174 c-0.2165527,0.5630417-0.4764099,1.0827637-0.7796021,1.6024933 c-0.6063843,0.9961472-1.2560425,1.8623657-1.9057007,2.7285767 c-0.4331055,0.5630417-1.256012,0.6929703-1.8190308,0.2598648c-0.5629883-0.4331055-0.6929626-1.2560043-0.2598572-1.819046 C358.1917419,102.7612534,358.2350464,102.7612534,358.2783508,102.6746292L358.2783508,102.6746292z"/>
+              </svg>
+            </span>
+          </div>
+          <div id="left-edge" class="edge edge-left" aria-label="Left Pico edge"></div>
+          <div class="board-spine" aria-hidden="true">
+            <svg class="board-components" viewBox="0 0 64 880" focusable="false">
+              <g class="pcb-traces"><path d="M32 45v22m-8 33v36l-8 8v16m24-60v42l8 8v10M16 216v26l14 14v26m18-66v40l-8 8v54M32 318v532M16 360v450l8 8v32M48 390v420l-8 8v32"/></g>
+              <rect class="component-metal" x="18" y="7" width="28" height="19" rx="2"/>
+              <rect class="bootsel-button" x="23" y="10" width="18" height="12" rx="2"/>
+              <text class="silkscreen" x="32" y="39">BOOTSEL</text>
+              <g class="chip-leads"><path d="M14 74h7m-7 7h7m-7 7h7m-7 7h7m22-21h7m-7 7h7m-7 7h7m-7 7h7"/></g>
+              <rect class="chip-body" x="21" y="68" width="22" height="33" rx="2"/>
+              <circle class="chip-mark" cx="25" cy="72" r="1"/>
+              <g class="chip-leads"><path d="M3 168h7m-7 8h7m-7 8h7m-7 8h7m-7 8h7m-7 8h7m44-40h7m-7 8h7m-7 8h7m-7 8h7m-7 8h7m-7 8h7M16 153v7m8-7v7m8-7v7m8-7v7m8-7v7m-32 56v7m8-7v7m8-7v7m8-7v7m8-7v7"/></g>
+              <rect class="chip-body" x="10" y="160" width="44" height="56" rx="3"/>
+              <circle class="chip-mark" cx="16" cy="166" r="1.5"/>
+              <text class="chip-text" x="32" y="186">RP2040</text>
+              <text class="chip-subtext" x="32" y="198">PICO</text>
+              <rect class="component-metal" x="22" y="258" width="26" height="14" rx="3"/>
+              <rect class="component-dark" x="10" y="295" width="12" height="6" rx="1"/>
+              <rect class="component-dark" x="42" y="310" width="12" height="6" rx="1"/>
+              <g class="test-points"><circle cx="16" cy="350" r="3"/><circle cx="48" cy="380" r="3"/></g>
+              <text class="silkscreen board-silkscreen" transform="translate(37 510) rotate(90)">Raspberry Pi Pico</text>
+            </svg>
+          </div>
+          <div id="right-edge" class="edge edge-right" aria-label="Right Pico edge"></div>
+          <div class="board-bottom" aria-hidden="true"></div>
+        </div>
+      </div>
+    </section>
+
+    </div>
+
+    <section class="editor" aria-label="Pin controls" aria-busy="false">
+      <form id="pin-form">
+        <div class="mode-fields">
+          <label>Mode<select id="pin-mode"><option value="" disabled hidden>Info only</option></select></label>
+          <label id="level-field" hidden>Level<select id="output-level"><option value="0">LOW · Off</option><option value="1">HIGH · On</option></select></label>
+        </div>
+        <div id="pwm-settings" hidden>
+          <div class="pwm-fields">
+            <label>Frequency <span>Hz</span><input id="frequency" type="number" inputmode="numeric" min="10" max="100000" step="1" value="1000" required></label>
+            <label>Duty Cycle <span>%</span><input id="duty" aria-label="Duty cycle in percent" type="number" inputmode="numeric" min="0" max="100" step="1" value="50" required></label>
+          </div>
+        </div>
+        <output id="analog-value" class="analog-value" aria-live="polite" hidden>— V</output>
+        <section id="advanced-settings" aria-label="GPIO pad settings" hidden>
+          <div id="output-advanced" class="advanced-fields" hidden>
+            <label>Drive strength<select id="drive-strength"><option value="2">2 mA</option><option value="4">4 mA</option><option value="8">8 mA</option><option value="12">12 mA</option></select></label>
+            <label>Slew rate<select id="slew-rate"><option value="slow">Slow</option><option value="fast">Fast</option></select></label>
+          </div>
+          <label id="input-advanced" hidden>Hysteresis (Schmitt trigger)<select id="input-hysteresis"><option value="on">On</option><option value="off">Off</option></select></label>
+        </section>
+        <div class="editor-actions">
+          <button id="apply-pin" type="submit">Apply</button>
+          <button id="pin-info" type="button" aria-label="Show pin information" aria-haspopup="dialog">ⓘ</button>
+        </div>
+      </form>
+      <p id="action-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <dialog id="pin-info-dialog" aria-labelledby="pin-info-title">
+    <div class="info-sheet">
+      <header class="info-heading"><h2 id="pin-info-title">Pin information</h2><button id="close-info" type="button" aria-label="Close pin information"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 4 8 8m0-8-8 8"/></svg></button></header>
+      <ul id="pin-legend" class="pin-legend"></ul>
+      <p id="pin-marking" class="info-note" hidden></p>
+      <p id="pin-info-note" class="info-note"></p>
+      <section id="mode-explanation" aria-labelledby="mode-explanation-title" hidden>
+        <h3 id="mode-explanation-title"></h3>
+        <p id="mode-explanation-description"></p>
+        <dl id="setting-explanations"></dl>
+        <p class="info-note">These values reflect your current selection. Changes take effect only when you press Apply.</p>
+      </section>
+    </div>
+  </dialog>
+</body>
+</html>
