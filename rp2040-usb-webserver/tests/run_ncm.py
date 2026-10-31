@@ -1,7 +1,10 @@
 """Exercise the actual SDK NCM callback; fail on missing iOS negotiation support."""
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
-from native_runner import ROOT, compile_and_run
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT.parent / "shared/rp2040-usb-web/tools"))
+from native_runner import compile_and_run
 
 
 def run():
@@ -13,7 +16,7 @@ def run():
     with TemporaryDirectory() as temp:
         # Compile the installed driver's real functions, not a copied test implementation.
         (Path(temp) / 'ncm_control_under_test.h').write_text(source[fit_start:fit_end] + '\n' + source[start:end])
-        compile_and_run('ncm-tests', [ROOT / 'tests/ncm_control_test.c'], temp, include_dirs=[temp])
+        compile_and_run('ncm-tests', [ROOT / 'tests/ncm_control_test.c'], temp, root=ROOT, include_dirs=[temp])
 
 
 if __name__ == '__main__':

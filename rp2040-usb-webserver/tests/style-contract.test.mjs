@@ -1,11 +1,12 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
-import { createDevServer } from '../tools/dev-server.mjs';
+import { createDevServer } from '../../shared/rp2040-usb-web/tools/dev-server.mjs';
 
 let browser, app, base;
 before(async () => {
-  app = await createDevServer({ target: 'http://127.0.0.1:9' });
+  app = await createDevServer({ target: 'http://127.0.0.1:9', webRoot: fileURLToPath(new URL('../web/', import.meta.url)) });
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${app.server.address().port}`;
   browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' ? 'msedge' : undefined) });

@@ -4,15 +4,16 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const defaultRoot = fileURLToPath(new URL('../web/', import.meta.url));
+const defaultRoot = path.resolve('web');
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
-const client = `const events = new EventSource('/__dev/events');
+const client = `globalThis.usbWebDevServer = true;
+const events = new EventSource('/__dev/events');
 let version;
 events.addEventListener('ready', e => { if(version && version !== e.data) location.reload(); version = e.data; });
 events.addEventListener('change', () => location.reload());`;
 
-export async function createDevServer({ target = 'http://192.168.7.1', webRoot = defaultRoot } = {}) {
+export async function createDevServer({ target = 'http://192.168.7.1', webRoot = defaultRoot, padSocketPort = 81 } = {}) {
   const upstreamUrl = new URL(target);
   if (upstreamUrl.protocol !== 'http:' || upstreamUrl.username || upstreamUrl.password ||
       upstreamUrl.pathname !== '/' || upstreamUrl.search || upstreamUrl.hash) {
@@ -20,6 +21,7 @@ export async function createDevServer({ target = 'http://192.168.7.1', webRoot =
   }
   const root = await realpath(webRoot);
   const peers = new Set();
+  const sockets = new Set();
   let revision = `${Date.now()}`;
   let debounce;
   function sendError(response, status, error) {
@@ -98,6 +100,34 @@ export async function createDevServer({ target = 'http://192.168.7.1', webRoot =
       sendError(response, 500, 'Development server could not process the request.');
     }
   });
+  server.on('upgrade', (request, socket, head) => {
+    const reject = status => { socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`); };
+    if (request.url !== '/api/pads/ws') { reject('404 Not Found'); return; }
+    if (request.headers.origin !== `http://${request.headers.host}`) { reject('403 Forbidden'); return; }
+    sockets.add(socket); socket.on('close', () => sockets.delete(socket));
+    socket.on('end', () => socket.destroy());
+    socket.on('error', () => socket.destroy());
+    const upstream = http.request({ hostname: upstreamUrl.hostname, port: padSocketPort,
+      path: '/api/pads/ws', headers: { Host: `${upstreamUrl.hostname}:${padSocketPort}`,
+        Origin: upstreamUrl.origin, Upgrade: 'websocket', Connection: 'Upgrade',
+        'Sec-WebSocket-Key': request.headers['sec-websocket-key'] || '',
+        'Sec-WebSocket-Version': request.headers['sec-websocket-version'] || '' } });
+    upstream.setTimeout(2000, () => upstream.destroy(new Error('WebSocket handshake timeout')));
+    upstream.on('error', () => socket.destroy());
+    upstream.on('response', response => { response.resume(); reject('502 Bad Gateway'); });
+    socket.on('close', () => upstream.destroy());
+    upstream.on('upgrade', (response, remote, remoteHead) => {
+      upstream.setTimeout(0); remote.setTimeout(0); remote.setNoDelay(true); socket.setNoDelay(true);
+      sockets.add(remote); remote.on('close', () => { sockets.delete(remote); socket.destroy(); });
+      remote.on('error', () => remote.destroy()); socket.on('close', () => remote.destroy());
+      remote.on('end', () => remote.destroy());
+      socket.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${response.headers['sec-websocket-accept']}\r\n\r\n`);
+      if (remoteHead.length) socket.write(remoteHead);
+      if (head.length) remote.write(head);
+      socket.pipe(remote); remote.pipe(socket);
+    });
+    upstream.end();
+  });
   const watcher = watch(root, { recursive: true }, () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
@@ -113,6 +143,7 @@ export async function createDevServer({ target = 'http://192.168.7.1', webRoot =
     clearInterval(heartbeat);
     watcher.close();
     for (const peer of peers) peer.end();
+    for (const socket of sockets) socket.destroy();
     server.closeAllConnections();
     await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   } };
@@ -121,13 +152,15 @@ export async function createDevServer({ target = 'http://192.168.7.1', webRoot =
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   let port = 5173;
   let target = 'http://192.168.7.1';
+  let webRoot = defaultRoot;
   for (let i = 2; i < process.argv.length; i += 2) {
     if (process.argv[i] === '--port') port = Number(process.argv[i + 1]);
+    else if (process.argv[i] === '--root') webRoot = process.argv[i + 1];
     else if (process.argv[i] === '--target') target = process.argv[i + 1];
     else throw new Error(`Unknown parameter: ${process.argv[i]}`);
   }
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port.');
-  const app = await createDevServer({ target });
+  const app = await createDevServer({ target, webRoot });
   app.server.on('error', async error => { console.error(error.message); await app.close().catch(() => {}); process.exitCode = 1; });
   app.server.listen(port, '127.0.0.1', () => console.log(`Live-Reload: http://127.0.0.1:${port}/ -> API: ${target}`));
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await app.close(); });

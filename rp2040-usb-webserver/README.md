@@ -95,7 +95,7 @@ The server listens only on `127.0.0.1` and forwards `/api/...` to
 `http://192.168.7.1`. Relative frontend URLs avoid the need for CORS permissions.
 Stop the foreground process with Ctrl+C. Background logs and process metadata
 are in `build/dev-server*.log` and `build/dev-server-process.json`.
-Changes to `tools/dev-server.mjs` require restarting the server.
+Changes to `../shared/rp2040-usb-web/tools/dev-server.mjs` require restarting the server.
 
 **The board serves embedded files.** Changes in `web/` appear at `rp2040.local`
 only after a firmware build and flash. There is no API for uploading HTML, CSS
@@ -134,9 +134,9 @@ from repositories without a frozen package snapshot, so builds are not
 bit-for-bit reproducible.
 
 Outputs: `build/pico/rp2040_usb_webserver.uf2`, plus ELF, BIN and
-`compile_commands.json`. `tools/embed_web.py` embeds HTML, CSS and all six
-JavaScript modules during the build. Adding embedded web files requires
-updating both the generator and CMake dependencies. The flash script checks
+`compile_commands.json`. `../shared/rp2040-usb-web/tools/embed_web.py` embeds HTML, CSS and all six
+JavaScript modules during the build. HTML, CSS and JavaScript files under
+`web/` are discovered automatically, including new or removed files. The flash script checks
 `INFO_UF2.TXT` and copies from Windows; Docker USB passthrough is unnecessary.
 
 ## Tests and troubleshooting
@@ -194,9 +194,16 @@ This does not establish compatibility with every adapter or iOS version.
 
 ## Architecture and provenance
 
+USB-NCM, DHCP, mDNS, HTTP response ownership, BOOTSEL and watchdog recovery
+are compiled from [the shared runtime](../shared/rp2040-usb-web). The Dockerfile
+and SDK patch live in `../toolchains/rp2040`. Project-local PowerShell entry
+points use the shared tool implementations; build and flashing commands remain
+the same. The build mounts the repository so shared sources are available.
+
 `gpio_api.c` parses HTTP paths, maps errors to HTTP and emits bounded JSON.
 `gpio_control.c` validates configurations before hardware changes and supplies
-readings. `web_fs.c` connects the API and static files to lwIP. Each dynamic
+readings. `web_routes.c` adapts the GPIO routes to the shared HTTP module in
+`../shared/rp2040-usb-web/web_fs.c`. Each dynamic
 GPIO response owns its snapshot; the TCP copy policy preserves its lifetime.
 `web/pico-pins.js` owns the standard Pico's physical pin order, GPIO identities,
 pin legends, firmware-support labels and ADC eligibility. Board rendering and
@@ -222,7 +229,7 @@ TinyUSB PR #2829. See [LICENSE](LICENSE) and the source-file copyright notices
 for the MIT license and attribution.
 Pico SDK 2.3.1: `079c6f39023649b154152db30f1d781e884879bc`.
 The Windows 11 NCM divisor fix from TinyUSB PR #3914 and the iOS backport from
-PR #3630 are checked during image build; see [patch provenance](patches/README.md).
+PR #3630 are checked during image build; see [patch provenance](../toolchains/rp2040/patches/README.md).
 
 Hardware and artwork references:
 

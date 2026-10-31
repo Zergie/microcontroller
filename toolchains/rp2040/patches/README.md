@@ -16,11 +16,12 @@ length; GET responses use persistent interface storage.
 The existing Windows NCM divisor fix (TinyUSB PR #3914) remains applied.
 No DNS server or default gateway is introduced by this patch.
 
-`tests/run_ncm.py` extracts the actual control callback from the installed
+`rp2040-usb-webserver/tests/run_ncm.py` extracts the actual control callback from the installed
 SDK for host tests under ASan/UBSan. The original callback fails the packet
 filter test; the patched callback must pass packet filter, 4/8-byte input
 sizes, DATA stages, negotiated limits and rejection tests. The firmware
 build separately compiles the complete actual driver and descriptor macro.
 
 Docker build context includes only Dockerfile and this patch. After changing
-the patch run `./Build-Project.ps1 -RebuildToolchain` before native tests.
+the patch run `./Build-Project.ps1 -RebuildToolchain` from either application
+directory before native tests. Both applications use the same image.

@@ -33,3 +33,9 @@ Firmware remains authoritative for available GPIOs and electrical validation.
 Frontend Pico descriptions do not replace firmware checks. Keep the working
 USB-NCM iOS fixes, watchdog recovery, no-DNS/no-default-gateway policy and
 lwIP dynamic-response lifetime/copy rules intact.
+
+The application adapter `web_routes.c` connects GPIO commands and snapshots to
+`../shared/rp2040-usb-web`. That shared module owns USB-NCM, DHCP, mDNS, HTTP
+connections and dynamic response lifetime, watchdog recovery and BOOTSEL.
+`main.c` owns GPIO initialization and polls the runtime. Changes to shared code
+must be tested and built against both this application and `name-tag-webserver`.

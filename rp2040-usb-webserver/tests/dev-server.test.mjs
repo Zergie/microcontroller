@@ -4,7 +4,7 @@ import http from 'node:http';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createDevServer } from '../tools/dev-server.mjs';
+import { createDevServer } from '../../shared/rp2040-usb-web/tools/dev-server.mjs';
 
 function listen(server) {
   return new Promise(resolve => server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${server.address().port}`)));

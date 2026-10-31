@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#202126">
+  <title>Name Tag · Animations</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main>
+    <section class="now-playing" aria-label="Current animation">
+      <button id="menu-toggle" class="menu-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="view-menu">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+      <span class="eyebrow">Now playing</span><h2 id="current">—</h2>
+    </section>
+    <nav id="view-menu" class="view-menu" aria-label="Views" hidden>
+      <button id="view-animations" type="button" aria-current="page">Animations</button>
+      <button id="view-pads" type="button">LED Pads</button>
+      <button id="view-songs" type="button">Songs</button>
+    </nav>
+    <form id="settings">
+      <label for="animation">Animation</label>
+      <select id="animation" name="animation" disabled><option value="random">Random loop · all effects</option></select>
+      <div id="interval-field" class="field"><label for="interval">Change every <span>seconds</span></label>
+        <input id="interval" type="number" min="5" max="3600" step="1" value="300" required inputmode="numeric" disabled></div>
+      <div class="field"><label for="brightness">Brightness <output id="brightness-value" for="brightness">20%</output></label>
+        <input id="brightness" type="range" min="1" max="100" step="1" value="20" disabled></div>
+      <div class="field"><label for="speed">Speed <output id="speed-value" for="speed">100%</output></label>
+        <input id="speed" type="range" min="5" max="800" step="5" value="100" disabled></div>
+      <label for="color-mode">Color</label>
+      <div class="color-control">
+        <select id="color-mode" aria-label="Color mode" disabled>
+          <option value="original">Original Color</option>
+          <option value="random" disabled>Random Color</option>
+          <option value="custom">Color</option>
+        </select>
+        <input id="color" type="color" aria-label="Custom color" value="#00ff28" disabled hidden>
+      </div>
+      <p id="color-hint" class="hint" hidden>One color per animation. Rainbow palettes stay unchanged.</p>
+      <p id="error" role="alert" hidden></p>
+      <p id="storage-status" class="hint" role="status" hidden></p>
+    </form>
+    <section id="pads-view" aria-label="LED pads" hidden>
+      <div class="pads-palette-field">
+        <label for="pads-palette">Colors</label>
+        <select id="pads-palette" disabled>
+          <option value="original">Original</option>
+          <option value="rainbow">Rainbow</option>
+          <option value="sunset">Sunset</option>
+          <option value="ocean">Ocean</option>
+          <option value="pastel">Pastel</option>
+          <option value="custom" disabled>Custom</option>
+        </select>
+      </div>
+      <div id="pads-grid" class="pads-grid">
+      </div>
+      <div class="pads-controls">
+      <div class="field pads-fade-field">
+        <label for="pads-fade">Fade out <output id="pads-fade-value" for="pads-fade">1.0 s</output></label>
+        <input id="pads-fade" type="range" min="0" max="2" step="0.1" value="1" disabled>
+      </div>
+      <div class="field pads-brightness-field">
+        <label for="pads-brightness">Brightness <output id="pads-brightness-value" for="pads-brightness">20%</output></label>
+        <input id="pads-brightness" type="range" min="1" max="100" step="1" value="20" disabled>
+      </div>
+      </div>
+      <div id="songs-controls" hidden>
+        <label for="song-select">Song</label>
+        <select id="song-select" disabled></select>
+        <button id="song-play" type="button" aria-pressed="false" disabled>Play</button>
+      </div>
+      <div class="pads-messages">
+        <p id="pads-notice" class="hint" role="status"></p>
+        <p id="pads-error" role="alert" hidden></p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
