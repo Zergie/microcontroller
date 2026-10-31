@@ -1,7 +1,7 @@
 #include "pads.h"
 #include <string.h>
 
-_Static_assert(PIXEL_COUNT>=PAD_COUNT,"LED pads require at least eight pixels");
+_Static_assert(PIXEL_COUNT>=PAD_COUNT,"LED pads require at least ten pixels");
 static pads_config_t config;
 static bool active, dirty;
 static unsigned pressed,last_brightness;
@@ -47,7 +47,7 @@ void pads_set_active(bool enabled,uint64_t now) {
 }
 bool pads_active(void) { return active; }
 bool pads_apply(unsigned mask,const pads_config_t *candidate,uint64_t now) {
-    if (mask>255 || !pads_config_valid(candidate)) return false;
+    if (mask>PAD_MASK || !pads_config_valid(candidate)) return false;
     expire(now);
     pads_configure(candidate);
     pads_set_active(true,now);
@@ -57,12 +57,12 @@ bool pads_apply(unsigned mask,const pads_config_t *candidate,uint64_t now) {
 }
 unsigned pads_pressed(uint64_t now) { expire(now); return pressed; }
 bool pads_set_pressed(unsigned mask,uint64_t now) {
-    if (!active || mask>255) return false;
+    if (!active || mask>PAD_MASK) return false;
     expire(now); set_mask(mask,now); lease_at=now+PAD_LEASE_MS;
     return true;
 }
 bool pads_pulse(unsigned mask,unsigned duration_ms,uint64_t now) {
-    if (!active || !mask || mask>255 || duration_ms>PAD_MAX_FADE_MS) return false;
+    if (!active || !mask || mask>PAD_MASK || duration_ms>PAD_MAX_FADE_MS) return false;
     expire(now);
     for (unsigned i=0;i<PAD_COUNT;++i) if (mask&(1u<<i)) {
         pressed&=~(1u<<i);

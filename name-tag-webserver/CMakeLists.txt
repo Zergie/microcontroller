@@ -8,7 +8,7 @@ pico_sdk_init()
 include(../shared/rp2040-usb-web/CMakeLists.txt)
 add_executable(name_tag_webserver main.c
     animations/effects.c animations/lab_effects.c animations/animation_engine.c
-    api/animation_api.c api/pads_api.c api/web_routes.c pads/pads.c
+    api/system_api.c api/animation_api.c api/pads_api.c api/web_routes.c pads/pads.c
     pads/ws_protocol.c pads/ws_server.c pixels/pixels.c
     settings/settings.c settings/flash_storage.c)
 target_include_directories(name_tag_webserver PRIVATE ${CMAKE_CURRENT_LIST_DIR})

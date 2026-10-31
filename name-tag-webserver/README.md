@@ -1,9 +1,9 @@
 # Name Tag USB Webserver
 
-Native C firmware rebuilding the LED animations in
-[`../name_tag_rp2040/default.py`](../name_tag_rp2040/default.py), with an English
-mobile web controller. The original CircuitPython project remains unchanged.
-MIDI and the experimental neural animation from `ai.py` are not included.
+Native C firmware with LED animations and an English mobile web controller,
+ported from the former CircuitPython Name Tag project. The CircuitPython
+project has been removed from this repository; this is the maintained Name Tag
+implementation. MIDI and the original experimental neural animation are not included.
 
 ## Hardware
 
@@ -12,7 +12,7 @@ using GRB order at 800 kHz. On 2026-10-30 the user confirmed that all LEDs
 illuminated red at 20% brightness after changing the data pin from GP24 to GP0.
 UART logging is disabled so it does not take ownership of GP0.
 
-The archived CircuitPython code used GP24, but its saved boot log identifies a
+The former CircuitPython code used GP24, but its saved boot log identified a
 different physical board. That pin produced no visible LED output on the
 currently connected board. On a standard Pico, GP24 senses VBUS. Keep the data
 pin configurable and confirm it against the actual LED wiring.
@@ -118,7 +118,7 @@ Actual appearance and rendering time at maximum speed still need hardware checks
 
 Open the menu at the right of the compact **Now playing** card and select
 **LED Pads**. Eight multitouch pads control the first eight LEDs; the remaining
-two LEDs stay off in this view. Hold a pad to light its LED and release it to
+two LEDs default to black and can be configured through the API. Hold a pad to light its LED and release it to
 fade out. Multiple fingers can hold different pads or the same pad.
 Slide a held finger across pads to play them like piano keys. Moving into a gap
 or outside the pads releases that finger's LED; sliding back onto a pad lights
@@ -160,7 +160,7 @@ shared with the animation view. In landscape, the Now playing card is hidden,
 the pads fill the available height and the menu stays accessible beside the
 sliders. Both views adapt to iPhone portrait and landscape layouts.
 
-The selected view, eight colors and fade duration are saved after ten seconds
+The selected view, ten API colors and fade duration are saved after ten seconds
 without configuration changes. Held pads and fade progress are never restored.
 The browser refreshes held pads every 250 ms; after 1200 ms without a refresh,
 the board releases them and starts the configured fade. Leaving the view resumes
@@ -269,10 +269,11 @@ without sending another configuration command. No watchdog recovery occurred.
 
 ## CircuitPython port
 
-The renderer ports the bundled **Adafruit LED Animation 2.11.1** classes in
-`../name_tag_rp2040/lib/adafruit_led_animation`, using the constructor values in
-`default.py`. The archived Python files remain unchanged and are also the
-executable test reference. The MIT attribution is in
+The renderer ports **Adafruit LED Animation 2.11.1**, using the constructor
+values from the former CircuitPython project's `default.py`. The original Python
+files are no longer included in this repository. The original parameters are
+documented below, and automated tests exercise the native renderer directly.
+The MIT attribution is in
 [animations/LICENSE.txt](animations/LICENSE.txt).
 
 | Effect | Frame interval at 100% | Original parameters |
@@ -343,8 +344,8 @@ as its original color setter does, instead of leaving old-colored pixels behind.
 The random loop intentionally remains the requested shuffle of all 21 effects,
 rather than the archived fixed eight-effect sequence. Random pixel selection has
 the same with-replacement behavior, but uses a native PRNG; an actual run does
-not reproduce CircuitPython's random seed/sequence. Automated tests exercise the native renderer directly; the archived Python
-classes are no longer executed as a differential oracle. Visual fidelity still
+not reproduce CircuitPython's random seed/sequence. The original Python
+classes are no longer available as a differential oracle. Visual fidelity still
 requires comparison on hardware.
 
 ## Tests
@@ -411,3 +412,22 @@ starts do not generate flash writes. Saved configurations use the current record
 Versioned records from earlier firmware and out-of-range settings are rejected
 without conversion. The latest valid record is restored; if none exists, boot
 defaults are used. There are no settings migrations.
+
+### Statistics
+
+Open **Menu → Statistics** for hardware, firmware build, SDK, uptime and boot ID.
+**Measure connection** runs seven HTTP round trips after one warm-up and three
+16 KiB downloads. Latency includes HTTP processing and the local proxy when using
+the dev server. Download is effective application throughput, not the nominal
+USB link speed. Measurements stop on view changes, backgrounding or disconnect.
+Older firmware still supports latency; hardware details and download measurement
+require the new firmware endpoints. SRAM and flash values are total capacities,
+not free memory; flash capacity is the SDK board configuration.
+
+The pad API also controls LEDs 9 and 10: masks span 0–1023 and full color
+payloads contain 60 hex digits. The eight-pad UI remains unchanged. See API.md
+for backward-compatible HTTP payloads and the extended WebSocket commands.
+
+Statistics separate HTTP round trips/download throughput from WebSocket echo
+latency. The latter requires diagnostic command 5 in firmware. An unavailable
+WebSocket does not discard HTTP results. Both timings exclude a warm-up sample.

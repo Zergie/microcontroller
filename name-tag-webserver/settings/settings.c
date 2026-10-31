@@ -58,7 +58,10 @@ static bool decode(const uint8_t *p, stored_settings_t *stored) {
     stored->pads.fade_ms=read32(p+80);
     if (p[84]>1) return false;
     stored->pads_active=p[84]!=0;
-    for (unsigned i=0;i<PAD_COUNT;++i) stored->pads.colors[i]=(rgb_t){p[56+i*3],p[57+i*3],p[58+i*3]};
+    for (unsigned i=0;i<PAD_COUNT;++i) {
+        unsigned offset=i<8 ? 56+i*3 : 85+(i-8)*3;
+        stored->pads.colors[i]=(rgb_t){p[offset],p[offset+1],p[offset+2]};
+    }
     return animation_config_valid(config) && pads_config_valid(&stored->pads);
 }
 static void encode(uint8_t *p, const stored_settings_t *stored, uint32_t sequence) {
@@ -72,7 +75,9 @@ static void encode(uint8_t *p, const stored_settings_t *stored, uint32_t sequenc
     const char *id=effect_id(config->effect);
     memcpy(p+24,id,strlen(id)+1);
     for (unsigned i=0;i<PAD_COUNT;++i) {
-        p[56+i*3]=stored->pads.colors[i].r; p[57+i*3]=stored->pads.colors[i].g; p[58+i*3]=stored->pads.colors[i].b;
+        // Keep fade/view offsets intact; LED 9/10 use reserved bytes 85..90.
+        unsigned offset=i<8 ? 56+i*3 : 85+(i-8)*3;
+        p[offset]=stored->pads.colors[i].r; p[offset+1]=stored->pads.colors[i].g; p[offset+2]=stored->pads.colors[i].b;
     }
     write32(p+80,stored->pads.fade_ms); p[84]=stored->pads_active ? 1:0;
     write32(p+CRC_OFFSET,crc32(p,CRC_OFFSET));

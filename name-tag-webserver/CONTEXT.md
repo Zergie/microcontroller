@@ -1,6 +1,6 @@
 # Name Tag vocabulary and module ownership
 
-- **Pad preferences**: eight colors and the manual fade-out duration. These are
+- **Pad preferences**: ten API colors (eight exposed in the UI) and the manual fade-out duration. These are
   persistent settings; touches, notes and their envelopes cannot modify them.
 - **Pad session**: one browser controller's pointer holds, selected view, songs,
   local audio and connection lifecycle. `web/pad-session.js` owns this state.
@@ -37,6 +37,18 @@ watchdog recovery and BOOTSEL. Shared network regressions belong there and run
 from both application test runners. Changes to shared code require native and
 browser tests and firmware builds for both projects. Preserve the tested iOS NCM
 behavior, no-DNS/no-default-gateway policy and lwIP response-copy rules.
+
+`web/statistics.js` owns read-only hardware diagnostics and bounded connection
+measurements. Measurements are sequential, uncached full-body HTTP requests and
+are cancelled when the view/page is left, hidden or offline. They never own pad
+holds or playback. `api/system_api.c` formats hardware data initialized in main;
+`api/web_routes.c` serves its snapshot and a fixed flash-backed download payload.
+Older firmware leaves unavailable fields blank and still allows HTTP latency.
+
+The pad API controls all ten LEDs via a ten-bit mask. Eight-color HTTP clients
+preserve colors 9/10. Wide WebSocket commands 3/4 supplement legacy commands 1/2.
+Settings keep the first eight colors at bytes 56..79, fade at 80..83 and view at
+84; colors 9/10 occupy reserved bytes 85..90, without a version or migration.
 
 The animation catalogue contains 13 classic effects plus eight Animation Lab
 concepts: Aurora, Tidal, Fireflies, Molten, Ripple, Heartbeat, Prism Weave and

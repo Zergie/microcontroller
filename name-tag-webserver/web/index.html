@@ -20,7 +20,20 @@
       <button id="view-animations" type="button" aria-current="page">Animations</button>
       <button id="view-pads" type="button">LED Pads</button>
       <button id="view-songs" type="button">Songs</button>
+      <button id="view-statistics" type="button">Statistics</button>
     </nav>
+    <section id="statistics-view" aria-label="Statistics" hidden>
+      <div class="statistics-heading">
+        <h3>Connection</h3>
+        <button id="measure-connection" class="statistics-refresh" type="button" aria-label="Refresh connection measurement" title="Refresh connection measurement" disabled>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 7v5h-5M19.4 12a7.5 7.5 0 1 1-2-5.1L20 9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+      <dl id="connection-info" class="statistics-list"></dl>
+      <h3>Hardware &amp; Firmware</h3>
+      <dl id="hardware-info" class="statistics-list"></dl>
+      <p id="statistics-info-status" class="hint" role="status"></p>
+    </section>
     <form id="settings">
       <label for="animation">Animation</label>
       <select id="animation" name="animation" disabled><option value="random">Random loop · all effects</option></select>

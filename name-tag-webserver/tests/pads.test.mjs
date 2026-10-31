@@ -18,13 +18,14 @@ describe('LED pad controller', { concurrency: 4 }, () => {
     const end = Date.now() + 6000;
     while (!condition()) { assert.ok(Date.now() < end, 'Expected device request was not observed'); await new Promise(r => setTimeout(r, 15)); }
   }
-  async function fixture(t, { width = 375, height = 667, supported = true, audio, fast = false } = {}) {
+  async function fixture(t, { width = 375, height = 667, supported = true, audio, fast = false, ten = false } = {}) {
     const context = await browser.newContext({ viewport: { width, height }, isMobile: true, hasTouch: true });
     const page = await context.newPage();
     if (audio) await page.addInitScript(installFakeAudio, { mode: audio });
     const state = { active: false, pressed_mask: 0, fade_ms: 1000,
       colors: ['#00ff28', '#00ffff', '#0000ff', '#b400ff', '#ff0014', '#ff2800', '#ff9600', '#ffffff'],
       brightness: 20, posts: [], delay: 0, offline: false, inFlight: 0, maxInFlight: 0, sockets: [], messages: [], pulses: [], ack: true };
+    if (ten) state.colors.push('#123456', '#abcdef');
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     t.after(async () => { state.delay = 0; await context.close(); assert.deepEqual(errors, []); });
@@ -62,11 +63,11 @@ describe('LED pad controller', { concurrency: 4 }, () => {
             const parts = path.split('/');
             state.active = true; state.pressed_mask = Number(parts[4]); state.fade_ms = Number(parts[5]);
             if (state.pressed_mask) state.pulses.push({ mask: state.pressed_mask, fade: state.fade_ms });
-            state.colors = parts[6].match(/.{6}/g).map(c => `#${c}`);
+            state.colors.splice(0, 8, ...parts[6].match(/.{6}/g).map(c => `#${c}`));
           } else if (path.startsWith('/api/pads/config/')) {
             const parts = path.split('/');
             state.active = true; state.fade_ms = Number(parts[4]);
-            state.colors = parts[5].match(/.{6}/g).map(c => `#${c}`);
+            state.colors.splice(0, 8, ...parts[5].match(/.{6}/g).map(c => `#${c}`));
           } else if (path.startsWith('/api/pads/pulse/')) {
             const parts = path.split('/');
             state.pulses.push({ mask: Number(parts[4]), fade: Number(parts[5]) });
@@ -100,6 +101,15 @@ describe('LED pad controller', { concurrency: 4 }, () => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: points });
     return cdp;
   }
+
+  test('Ten-color firmware keeps the eight-pad UI usable and preserves API-only colors', async t => {
+    const { page, state, enter } = await fixture(t, { ten: true });
+    await enter();
+    assert.equal(await page.locator('.led-pad').count(), 8);
+    await page.locator('input[aria-label="LED 2 color"]').fill('#765432');
+    await until(() => state.colors[1] === '#765432');
+    assert.deepEqual(state.colors.slice(8), ['#123456', '#abcdef']);
+  });
 
   test('WebSocket sends masks immediately while HTTP settings or acknowledgements are pending', async t => {
     const { page, context, state, enter } = await fixture(t, { fast: true, audio: 'normal' }); await enter();

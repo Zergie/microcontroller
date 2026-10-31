@@ -56,11 +56,11 @@ export function createPadSession({ onChange = () => {}, onOffline = () => {},
     try {
       const data = await request('/api/pads.json', 'GET');
       if (epoch !== loadEpoch) return;
-      if (!Array.isArray(data.colors) || data.colors.length !== 8 ||
+      if (!Array.isArray(data.colors) || ![8, 10].includes(data.colors.length) ||
           !data.colors.every(c => /^#[0-9a-f]{6}$/i.test(c)) ||
           !Number.isInteger(data.fade_ms) || data.fade_ms < 0 || data.fade_ms > 2000)
         throw new Error('Invalid LED pad status.');
-      colors = [...data.colors]; fadeMs = data.fade_ms; ready = true; error = '';
+      colors = data.colors.slice(0, 8); fadeMs = data.fade_ms; ready = true; error = '';
     } catch (reason) { if (epoch === loadEpoch) failed(reason); }
     finally { if (epoch === loadEpoch) { loading = false; sync(); } }
   }

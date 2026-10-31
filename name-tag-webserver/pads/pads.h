@@ -1,7 +1,8 @@
 #ifndef PADS_H
 #define PADS_H
 #include "animations/effects.h"
-#define PAD_COUNT 8u
+#define PAD_COUNT 10u
+#define PAD_MASK ((1u << PAD_COUNT) - 1u)
 #define PAD_MAX_FADE_MS 2000u
 #define PAD_LEASE_MS 1200u
 typedef struct { rgb_t colors[PAD_COUNT]; unsigned fade_ms; } pads_config_t;
@@ -19,6 +20,6 @@ bool pads_set_pressed(unsigned mask, uint64_t now_ms);
 bool pads_pulse(unsigned mask, unsigned duration_ms, uint64_t now_ms);
 void pads_release(uint64_t now_ms);
 unsigned pads_pressed(uint64_t now_ms);
-// One frame for held/fading pads; all LEDs beyond the first eight are black.
+// One frame for all ten held/fading LEDs.
 bool pads_render(uint64_t now_ms, unsigned brightness, effect_frame_t *frame);
 #endif

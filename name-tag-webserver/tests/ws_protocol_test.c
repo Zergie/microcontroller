@@ -12,8 +12,8 @@ static bool write_bytes(void *user,const uint8_t *data,size_t length) {
     if (!allow_write) return false;
     assert(output_used+length<sizeof(output)); memcpy(output+output_used,data,length); output_used+=length; return true;
 }
-static bool press(void *user,uint8_t mask) { (void)user; pressed=mask; ++commands; return allow_press; }
-static bool pulse(void *user,uint8_t mask,unsigned ms) { duration=ms; return press(user,mask); }
+static bool press(void *user,unsigned mask) { (void)user; pressed=mask; ++commands; return allow_press; }
+static bool pulse(void *user,unsigned mask,unsigned ms) { duration=ms; return press(user,mask); }
 static pad_ws_protocol_t protocol(void) {
     output_used=commands=pressed=0; allow_write=allow_press=true;
     return (pad_ws_protocol_t){.write=write_bytes,.press=press,.pulse=pulse};
@@ -55,6 +55,20 @@ int main(int argc,char **argv) {
     n=frame(data,2,false,note,2); n+=frame(data+n,0,true,note+2,2);
     assert(pad_ws_feed(&ws,data,n) && commands==5 && pressed==64 && duration==1071);
     assert(output[output_used-2]==2 && output[output_used-1]==64);
+    unsigned previous_commands=commands, previous_pressed=pressed;
+    uint8_t echo[]={5,123}; n=frame(data,2,true,echo,sizeof(echo));
+    assert(pad_ws_feed(&ws,data,n) && commands==previous_commands && pressed==previous_pressed);
+    assert(output[output_used-2]==5 && output[output_used-1]==123);
+    uint8_t wide[]={3,0xff,3};
+    ws=upgraded(); n=frame(data,2,true,wide,sizeof(wide));
+    assert(pad_ws_feed(&ws,data,n) && pressed==1023 && commands==1);
+    assert(output_used==5 && output[2]==3 && output[3]==255 && output[4]==3);
+    uint8_t wide_note[]={4,0,3,0x2f,4};
+    n=frame(data,2,false,wide_note,2); n+=frame(data+n,0,true,wide_note+2,3);
+    assert(pad_ws_feed(&ws,data,n) && pressed==768 && duration==1071);
+    assert(output[output_used-3]==4 && output[output_used-2]==0 && output[output_used-1]==3);
+    wide[2]=4; n=frame(data,2,true,wide,sizeof(wide));
+    unsigned before=commands; assert(!pad_ws_feed(&ws,data,n) && commands==before);
     for (unsigned kind=0;kind<10;++kind) {
         ws=upgraded(); payload[0]=1; payload[1]=255; n=frame(data,2,true,payload,2);
         switch (kind) {

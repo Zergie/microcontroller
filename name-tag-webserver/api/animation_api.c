@@ -78,7 +78,7 @@ bool animation_api_snapshot(char *buffer, size_t capacity) {
         "\"speed_percent\":%u,\"interval_seconds\":%u,\"color\":\"#%02x%02x%02x\","
         "\"original_colors\":%s,\"color_mode\":\"%s\",\"current_color\":\"#%02x%02x%02x\","
         "\"settings_saved\":%s,\"settings_saving\":%s,\"settings_error\":%s,"
-        "\"pads_supported\":true,\"pads_transport\":\"websocket-v1\",\"control_view\":\"%s\",\"pixel_count\":%u,\"pin\":%u,\"effects\":[",
+        "\"pads_supported\":true,\"pads_mask_bits\":10,\"pads_transport\":\"websocket-v1\",\"control_view\":\"%s\",\"pixel_count\":%u,\"pin\":%u,\"effects\":[",
         (unsigned)(boot_id>>32), (unsigned)boot_id,
         config.random ? "random" : effect_id(config.effect), effect_id(animation_current()),
         config.brightness_percent, config.speed_percent, config.interval_seconds,

@@ -99,7 +99,7 @@ def run():
                 assert {posixpath.normpath(posixpath.join(posixpath.dirname(name), imported)) for imported in imports} <= asset_names
         print('Name Tag: JSON schema and exact embedded frontend payloads OK')
         compile_and_run('http-tests', [
-            ROOT / 'tests/http_test.c', ROOT / 'api/web_routes.c', ROOT / 'api/animation_api.c',
+            ROOT / 'tests/http_test.c', ROOT / 'api/web_routes.c', ROOT / 'api/system_api.c', ROOT / 'api/animation_api.c',
             ROOT / 'animations/animation_engine.c', ROOT / 'animations/effects.c', ROOT / 'animations/lab_effects.c', ROOT / 'settings/settings.c', ROOT / 'pads/pads.c', ROOT / 'api/pads_api.c',
             SHARED / 'web_fs.c', SHARED / 'captive_portal.c', SHARED / 'tests/fakes/network.c',
         ], temp, root=ROOT, include_dirs=[ROOT, ROOT / 'tests/fakes', SHARED,

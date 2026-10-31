@@ -140,16 +140,25 @@ static bool frame_in(pad_ws_protocol_t *ws) {
     memcpy(ws->message+ws->message_used,payload,length); ws->message_used+=length;
     ws->fragmented=!final;
     if (!final) return true;
-    uint8_t kind=ws->message[0], mask=ws->message[1];
+    uint8_t kind=ws->message[0];
+    unsigned mask=ws->message[1];
+    if (ws->message_used>=3 && (kind==3 || kind==4)) mask|=(unsigned)ws->message[2]<<8;
     bool valid=false;
     if (ws->message_used==2 && kind==1 && ws->press)
         valid=ws->press(ws->user,mask);
     if (ws->message_used==4 && kind==2 && ws->pulse)
         valid=ws->pulse(ws->user,mask,(unsigned)ws->message[2]|((unsigned)ws->message[3]<<8));
+    if (ws->message_used==3 && kind==3 && ws->press && mask<=1023)
+        valid=ws->press(ws->user,mask);
+    if (ws->message_used==5 && kind==4 && ws->pulse && mask<=1023)
+        valid=ws->pulse(ws->user,mask,(unsigned)ws->message[3]|((unsigned)ws->message[4]<<8));
+    // Read-only diagnostic echo: no pad state, lease or settings changes.
+    if (ws->message_used==2 && kind==5) valid=true;
     if (!valid) return close_error(ws,1008);
     ws->message_used=0;
     // Tiny acknowledgement also lets the browser detect stalled transports.
-    uint8_t ack[]={kind,mask}; return frame_out(ws,2,ack,sizeof(ack));
+    uint8_t ack[]={kind,(uint8_t)mask,(uint8_t)(mask>>8)};
+    return frame_out(ws,2,ack,(kind==3 || kind==4) ? 3 : 2);
 }
 bool pad_ws_feed(pad_ws_protocol_t *ws,const uint8_t *data,size_t length) {
     for (size_t i=0;i<length;++i) {

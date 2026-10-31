@@ -55,6 +55,12 @@ int main(void) {
     a=open_client(); assert(listener.accept(NULL,&a,ERR_OK)==ERR_OK);
     now=7000; assert(a.poll(a.arg,&a)==ERR_OK && a.closed); // Incomplete handshake timeout.
     a=open_client(); upgrade(&a); assert(input(&a,mask,sizeof(mask))==ERR_OK);
+    const uint8_t wide[]={0x82,0x83,0,0,0,0,3,0,3};
+    assert(input(&a,wide,sizeof(wide))==ERR_OK && pads_pressed(now)==768);
+    const uint8_t wide_pulse[]={0x82,0x85,0,0,0,0,4,0,3,0xf4,1};
+    assert(input(&a,wide_pulse,sizeof(wide_pulse))==ERR_OK && pads_pressed(now)==0);
+    effect_frame_t frame; assert(pads_render(now,100,&frame));
+    // Configure colors through HTTP elsewhere; this verifies upper bits survive TCP.
     a.error(a.arg,ERR_ABRT); assert(!pads_pressed(now));
     a=open_client(); upgrade(&a);
     fail_write=fail_close=true;

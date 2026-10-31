@@ -98,7 +98,7 @@ remains, the board uses boot defaults.
 ## LED pads
 
 `GET /api/pads.json` returns `active`, `pressed_mask`, `fade_ms`, `lease_ms`,
-`settings_saved`, `settings_error` and `colors` (eight `#rrggbb` strings).
+`settings_saved`, `settings_error` and `pad_count:10` and `colors` (ten `#rrggbb` strings).
 Animation status advertises `pads_supported:true` and `control_view`, either
 `animations` or `pads`.
 New firmware also advertises `pads_transport:"websocket-v1"`.
@@ -111,9 +111,8 @@ POST /api/pads/release
 POST /api/view/animations
 ```
 
-Bodies must be empty. `mask` is an integer 0–255: bit 0 holds LED 1, bit 7 holds
-LED 8. `fade_ms` is an integer 0–2000. `colors` contains exactly 48 hexadecimal
-digits: eight consecutive RGB colors, without separators or `#`. All fields
+Bodies must be empty. `mask` is an integer 0–1023: bit 0 holds LED 1, bit 9 holds LED 10. `fade_ms` is an integer 0–2000. `colors` contains 60 hexadecimal
+digits: ten consecutive RGB colors, without separators or `#`. All fields
 are validated before any changes. Successful commands return pad status.
 
 `set` enters pad mode and atomically applies the complete mask and configuration.
@@ -126,7 +125,7 @@ fades. `release` does the same immediately and stays in pad mode.
 in pad mode. Colors, fade duration and selected view use the shared ten-second
 persistence debounce; touches and heartbeats do not create flash writes.
 
-`pulse` starts an immediately released note envelope for a nonzero mask (1–255)
+`pulse` starts an immediately released note envelope for a nonzero mask (1–1023)
 with an integer duration of 0–2000 ms. It requires an already active pad view;
 it never changes colors, manual fade, view or persisted settings. Each selected
 LED captures its own duration, so overlapping notes fade independently. Repeating
@@ -171,3 +170,35 @@ The device closes stalled handshakes after 2 seconds and idle peers after 5 seco
 - `GET /api/system/network.json`: USB-network watchdog recovery and portal status.
 - `POST /api/system/bootsel`, empty body: 202 acknowledgement followed by a ROM
   BOOTSEL reboot after 1500 ms. USB networking disappears until firmware boots.
+
+## Diagnostics (GET, no state changes)
+
+- `/api/system/info.json`: chip, board ID, CPU clock (Hz), configured flash and
+  total SRAM (bytes), uptime (ms), firmware name, build timestamp, SDK version,
+  USB mode, LED count and data GPIO. Build time is compiler-local.
+- `/api/system/benchmark`: fixed 16,384-byte flash-backed payload, no-store,
+  application/octet-stream. Used for bounded download throughput tests.
+- `/api/system/network.json`: existing network recovery diagnostics; also used
+  for HTTP round-trip timing. These are not ICMP ping or physical USB speed.
+
+### Ten-LED pad commands
+
+Eight-color HTTP payloads (48 hex digits) are also accepted and leave the stored
+colors of LEDs 9 and 10 unchanged. All ten colors are returned in pad status.
+The browser retains eight playable pads and uses the first eight returned colors.
+
+Animation status advertises `pads_mask_bits:10`. WebSocket clients can use:
+
+- `[3, mask_lo, mask_hi]` to hold/release any of the ten LEDs.
+- `[4, mask_lo, mask_hi, duration_lo, duration_hi]` for transient pulses.
+
+Both masks and durations are unsigned little-endian. Bits above bit 9 are rejected.
+Acknowledgements are `[command, mask_lo, mask_hi]`. Commands 1 and 2 retain their
+existing eight-bit payloads and acknowledgements. The same active-mode, lease,
+fade and atomic validation rules apply to all commands. Check `pads_mask_bits`
+before sending commands 3/4 to older firmware. New LEDs default to black until
+configured; all ten colors persist across restart.
+
+WebSocket diagnostic command `[5, sequence]` echoes `[5, sequence]` without
+changing LEDs, preferences or held-mask leases. The statistics view excludes the
+handshake and one warm-up echo, then measures seven echo round trips.

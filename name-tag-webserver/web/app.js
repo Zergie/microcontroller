@@ -1,4 +1,5 @@
 import { createPadsController } from './pads.js';
+import { createStatisticsController } from './statistics.js';
 
 const $ = id => document.getElementById(id);
 const form = $('settings');
@@ -20,28 +21,33 @@ let reloading = false;
 const pads = createPadsController({ onOffline() {
   online = false; form.dataset.online = 'false'; updateControls();
 } });
+const statistics = createStatisticsController();
 function closeMenu() {
   $('view-menu').hidden = true;
   $('menu-toggle').setAttribute('aria-expanded', 'false');
 }
 function showView(view, notify = true) {
   currentView = view;
-  const manual = view !== 'animations';
+  const manual = view === 'pads' || view === 'songs';
+  const stats = view === 'statistics';
   const songView = view === 'songs';
-  form.hidden = manual;
+  form.hidden = manual || stats;
+  $('statistics-view').hidden = !stats;
+  statistics.setVisible(stats);
   $('pads-view').hidden = !manual;
   document.querySelector('main').classList.toggle('pads-active', view === 'pads');
   document.documentElement.classList.toggle('pads-active', view === 'pads');
   document.querySelector('main').classList.toggle('songs-active', songView);
   $('songs-controls').hidden = !songView;
-  for (const [id, selected] of [['view-animations', !manual], ['view-pads', view === 'pads'], ['view-songs', songView]]) {
+  for (const [id, selected] of [['view-statistics', stats], ['view-animations', view === 'animations'], ['view-pads', view === 'pads'], ['view-songs', songView]]) {
     if (selected) $(id).setAttribute('aria-current', 'page');
     else $(id).removeAttribute('aria-current');
   }
   if (manual) {
     $('current').textContent = songView ? 'Songs' : 'LED Pads';
-  } else if (latestStatus) showPlaying(latestStatus);
-  pads.setView(view, notify);
+  } else if (stats) $('current').textContent = 'Statistics';
+  else if (latestStatus) showPlaying(latestStatus);
+  pads.setView(stats ? 'animations' : view, notify);
   closeMenu();
 }
 function showPlaying(data) {
@@ -56,6 +62,7 @@ $('menu-toggle').addEventListener('click', () => {
 $('view-animations').addEventListener('click', () => showView('animations'));
 $('view-pads').addEventListener('click', () => showView('pads'));
 $('view-songs').addEventListener('click', () => showView('songs'));
+$('view-statistics').addEventListener('click', () => showView('statistics'));
 document.addEventListener('click', event => {
   if (!event.target.closest('#view-menu, #menu-toggle')) closeMenu();
 });
@@ -99,6 +106,7 @@ function updateControls() {
   $('color-mode').querySelector('[value="random"]').disabled = !supportsRandomColor;
   pads.setConnection(online, supportsPads, latestStatus?.pads_transport);
   $('pads-brightness').disabled = !online || !supportsPads;
+  statistics.setConnection(online, latestStatus);
 }
 
 function showFields() {

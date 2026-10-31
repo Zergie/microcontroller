@@ -42,7 +42,7 @@ int main(void) {
     const char *valid="/api/pads/set/129/1500/ff000000ff000000ffffffff00ff00ff00ffffffffff0000";
     assert(pads_api_command(valid,8000)==200 && pads_pressed(8000)==129);
     pads_config_t before=pads_config();
-    const char *bad[]={"/api/pads/set/256/1000/ff000000ff000000ffffffff00ff00ff00ffffffffff0000",
+    const char *bad[]={"/api/pads/set/1024/1000/ff000000ff000000ffffffff00ff00ff00ffffffffff0000",
         "/api/pads/set/0/2001/ff000000ff000000ffffffff00ff00ff00ffffffffff0000",
         "/api/pads/set/-1/1000/ff000000ff000000ffffffff00ff00ff00ffffffffff0000",
         "/api/pads/set/1/1000/ff0000", "/api/pads/set/0/1000/zz000000ff000000ffffffff00ff00ff00ffffffffff0000"};
@@ -93,11 +93,24 @@ int main(void) {
     assert(pads_pulse(2,1000,350)); // Another note does not restart the first envelope.
     assert(pads_render(600,100,&frame) && !frame.pixels[0][0].r);
     pads_config_t after_pulse=pads_config(); assert(pads_config_equal(&config,&after_pulse));
-    const char *bad_pulses[]={"/api/pads/pulse/0/100", "/api/pads/pulse/256/100",
+    const char *bad_pulses[]={"/api/pads/pulse/0/100", "/api/pads/pulse/1024/100",
         "/api/pads/pulse/1/2001", "/api/pads/pulse/1/500/", "/api/pads/pulse/-1/500"};
     for (unsigned i=0;i<sizeof(bad_pulses)/sizeof(*bad_pulses);++i)
         assert(pads_api_command(bad_pulses[i],600)==400);
     assert(pads_pulse(1,0,700));
     assert(pads_render(700,100,&frame) && !frame.pixels[0][0].r);
-    puts("LED pads: concurrent holds, independent fades, re-press, global brightness, lease expiry, extra LEDs off, atomic API and JSON bounds OK");
+    // Ten-color HTTP configuration, upper mask bits, fade and atomic rejection.
+    const char *ten="/api/pads/set/1023/1000/ff000000ff000000ffffffff00ff00ff00ffffffffff0000123456abcdef";
+    assert(pads_api_command(ten,9000)==200 && pads_pressed(9000)==1023);
+    assert(pads_render(9000,100,&frame));
+    assert(frame.pixels[0][8].r==0x12 && frame.pixels[0][9].b==0xef);
+    before=pads_config();
+    assert(pads_api_command(valid,9010)==200); // Legacy colors retain LED 9/10.
+    config=pads_config(); assert(!memcmp(config.colors+8,before.colors+8,2*sizeof(rgb_t)));
+    assert(pads_set_pressed(768,9020));
+    assert(pads_pulse(768,1000,9030) && !pads_pressed(9030));
+    assert(pads_render(9530,100,&frame) && frame.pixels[0][9].r==0xab/2);
+    assert(!pads_set_pressed(1024,9540) && !pads_pulse(1024,100,9540));
+    assert(pads_api_snapshot(json,sizeof(json),9540) && strstr(json,"\"pad_count\":10"));
+    puts("LED pads: concurrent holds, independent fades, re-press, global brightness, lease expiry, ten-LED masks/colors, atomic API and JSON bounds OK");
 }

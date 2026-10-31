@@ -98,3 +98,14 @@ main { position: relative; }
   .songs-active #songs-controls { grid-column: 2; grid-row: 1 / span 3; align-self: start; }
   .songs-active .pads-messages { grid-column: 1 / -1; }
 }
+
+.statistics-list { margin: 0 0 24px; }
+.statistics-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid #44454f; font-size: 14px; }
+.statistics-list dt { color: #a9aab6; }
+.statistics-list dd { margin: 0; text-align: right; overflow-wrap: anywhere; min-width: 0; }
+#statistics-view h3 { font-size: 16px; font-weight: 500; margin: 20px 0 10px; }
+.statistics-heading { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 2px; }
+#statistics-view .statistics-heading h3 { margin: 0; }
+.statistics-refresh { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 9px; background: transparent; color: #e2e3e6; cursor: pointer; }
+.statistics-refresh:hover { background: #3b3c45; }
+.statistics-refresh:disabled { opacity: .45; cursor: default; }

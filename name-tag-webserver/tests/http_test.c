@@ -2,6 +2,7 @@
 #include "lwip/apps/httpd.h"
 #include "animations/animation_engine.h"
 #include "pads/pads.h"
+#include "api/system_api.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +33,20 @@ static err_t begin(void *connection, const char *uri, int length, char *response
 }
 
 int main(void) {
+    system_api_init("0123456789abcdef", 125000000, 2097152, "test-sdk");
+    char tiny[8];
+    assert(!system_api_snapshot(tiny, sizeof(tiny), 0));
+    struct fs_file diagnostic = open_file("/api/system/info.json");
+    assert(strstr(diagnostic.data, "\"board_id\":\"0123456789abcdef\""));
+    assert(strstr(diagnostic.data, "\"uptime_ms\":1000"));
+    assert(strstr(diagnostic.data, "\"cpu_hz\":125000000"));
+    assert(strstr(diagnostic.data, "\"flash_bytes\":2097152"));
+    fs_close_custom(&diagnostic);
+    diagnostic = open_file("/api/system/benchmark");
+    assert(!diagnostic.pextension);
+    const char *body = strstr(diagnostic.data, "\r\n\r\n") + 4;
+    assert(strlen(body) == 16384 && strstr(diagnostic.data, "Content-Length: 16384\r\n"));
+    fs_close_custom(&diagnostic);
     animation_init(0, 42);
     pads_init();
     struct fs_file before = open_file("/api/animation.json");

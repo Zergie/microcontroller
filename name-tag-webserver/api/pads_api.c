@@ -40,9 +40,12 @@ int pads_api_command(const char *uri,uint64_t now) {
     if (!config_only && strncmp(uri,prefix,sizeof(prefix)-1)) return 404;
     const char *p=uri+(config_only ? sizeof(config_prefix)-1 : sizeof(prefix)-1);
     unsigned mask=0,fade;
-    if ((!config_only && !number(&p,&mask)) || !number(&p,&fade) || strlen(p)!=PAD_COUNT*6) return 400;
-    pads_config_t candidate={.fade_ms=fade};
-    for (unsigned i=0;i<PAD_COUNT;++i) {
+    if ((!config_only && !number(&p,&mask)) || !number(&p,&fade)) return 400;
+    size_t colors=strlen(p)/6;
+    if (strlen(p)%6 || (colors!=8 && colors!=PAD_COUNT)) return 400;
+    // Eight-color clients keep the two API-only LED colors unchanged.
+    pads_config_t candidate=pads_config(); candidate.fade_ms=fade;
+    for (unsigned i=0;i<colors;++i) {
         uint8_t *channels[]={&candidate.colors[i].r,&candidate.colors[i].g,&candidate.colors[i].b};
         for (unsigned c=0;c<3;++c) {
             int high=hex(p[i*6+c*2]),low=hex(p[i*6+c*2+1]);
@@ -57,9 +60,9 @@ int pads_api_command(const char *uri,uint64_t now) {
 }
 bool pads_api_snapshot(char *buffer,size_t capacity,uint64_t now) {
     pads_config_t config=pads_config();
-    int n=snprintf(buffer,capacity,"{\"active\":%s,\"pressed_mask\":%u,\"fade_ms\":%u,\"lease_ms\":%u,"
+    int n=snprintf(buffer,capacity,"{\"pad_count\":%u,\"active\":%s,\"pressed_mask\":%u,\"fade_ms\":%u,\"lease_ms\":%u,"
         "\"settings_saved\":%s,\"settings_error\":%s,\"colors\":[",
-        pads_active() ? "true":"false",pads_pressed(now),config.fade_ms,PAD_LEASE_MS,
+        PAD_COUNT,pads_active() ? "true":"false",pads_pressed(now),config.fade_ms,PAD_LEASE_MS,
         settings_saved() ? "true":"false",settings_error() ? "true":"false");
     if (n<0 || (size_t)n>=capacity) return false;
     size_t used=(size_t)n;

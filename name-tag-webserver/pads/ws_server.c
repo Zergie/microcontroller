@@ -25,11 +25,11 @@ static bool write_bytes(void *user,const uint8_t *data,size_t length) {
     if (tcp_write(client.pcb,data,(u16_t)length,TCP_WRITE_FLAG_COPY)!=ERR_OK) return false;
     return tcp_output(client.pcb)==ERR_OK;
 }
-static bool press(void *user,uint8_t mask) {
+static bool press(void *user,unsigned mask) {
     (void)user;
     return pads_set_pressed(mask,time_us_64()/1000);
 }
-static bool pulse(void *user,uint8_t mask,unsigned duration_ms) {
+static bool pulse(void *user,unsigned mask,unsigned duration_ms) {
     (void)user;
     return pads_pulse(mask,duration_ms,time_us_64()/1000);
 }

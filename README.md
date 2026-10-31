@@ -1,13 +1,13 @@
 # My Microcontroller Projects
 
-Welcome to my collection of microcontroller projects! Here, you'll discover a range of creations using Arduino, STM32, MicroPython, and CircuitPython. Whether you're just starting out or have been at it for a while, there's something exciting waiting for you.
+Welcome to my collection of microcontroller projects! Here, you'll discover a range of creations using Arduino, STM32, MicroPython, and native C for RP2040. Whether you're just starting out or have been at it for a while, there's something exciting waiting for you.
 
 ## What You'll Find
 
 - Projects using Arduino
 - Projects using STM32
 - Projects using MicroPython
-- Projects using CircuitPython
+- Projects using native C for RP2040
 
 Enjoy exploring and happy tinkering!
 
@@ -18,5 +18,4 @@ Enjoy exploring and happy tinkering!
 - [Shared USB web runtime](shared/rp2040-usb-web): networking, HTTP and tools.
 - [RP2040 toolchain](toolchains/rp2040): pinned SDK and iOS NCM compatibility patch.
 
-The original [CircuitPython Name Tag](name_tag_rp2040) remains the reference.
 Each native application builds its own UF2 and serves its own frontend/API.
