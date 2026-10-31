@@ -42,7 +42,12 @@ int main(int argc,char **argv) {
     if (argc==2 && !strcmp(argv[1],"--trace")) {
         const uint64_t times[]={0,137,500,1000,1600,3200,4800,6000,8000,12345};
         for (effect_t e=EFFECT_AURORA;e<EFFECT_COUNT;++e) for (unsigned n=0;n<sizeof(times)/sizeof(*times);++n) {
-            rgb_t pixels[PIXEL_COUNT]; lab_effect_render(e,times[n],effect_default_color(e),true,pixels);
+            // Keep the frozen concept frames; compare at proportionally earlier
+            // integer timestamps to prove speed changes without palette drift.
+            unsigned speed=(e==EFFECT_AURORA || e==EFFECT_TIDAL) ? 6 :
+                (e==EFFECT_FIREFLIES || e==EFFECT_MOLTEN || e==EFFECT_RIPPLE || e==EFFECT_PRISM_WEAVE) ? 2 : 1;
+            if (times[n]%speed) continue;
+            rgb_t pixels[PIXEL_COUNT]; lab_effect_render(e,times[n]/speed,effect_default_color(e),true,pixels);
             printf("%s %llu",effect_id(e),(unsigned long long)times[n]);
             for (unsigned i=0;i<PIXEL_COUNT;++i) printf(" %u %u %u",pixels[i].r,pixels[i].g,pixels[i].b);
             putchar('\n');

@@ -35,6 +35,8 @@ def run():
                         'animations/effects.c', 'animations/lab_effects.c'],
                         temp, root=ROOT, include_dirs=[ROOT])
         expected = json.loads((ROOT / 'tests/fixtures/lab-frames.json').read_text(encoding='utf-8'))
+        speeds = {'aurora': 6, 'tidal': 6, 'fireflies': 2, 'molten': 2, 'ripple': 2, 'prism-weave': 2}
+        expected = [frame for frame in expected if frame['ms'] % speeds.get(frame['id'], 1) == 0]
         trace = subprocess.check_output([str(Path(temp) / 'lab-effects-tests'), '--trace'], text=True).splitlines()
         assert len(trace) == len(expected)
         worst = 0
@@ -46,7 +48,7 @@ def run():
             error = max(abs(int(a)-b) for a, b in zip(values, wanted))
             assert error <= 2, (identity, time, error)
             worst = max(worst, error)
-        print(f'Animation Lab: 80 mockup reference frames, maximum RGB difference {worst}/255')
+        print(f'Animation Lab: {len(expected)} speed-adjusted mockup reference frames, maximum RGB difference {worst}/255')
         # Exercise the actual linker guard at both sides of the reserved area.
         obj = Path(temp) / 'guard.o'
         subprocess.run(['gcc', '-c', '-x', 'c', '-o', obj, '-'],

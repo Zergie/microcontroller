@@ -431,3 +431,8 @@ for backward-compatible HTTP payloads and the extended WebSocket commands.
 Statistics separate HTTP round trips/download throughput from WebSocket echo
 latency. The latter requires diagnostic command 5 in firmware. An unavailable
 WebSocket does not discard HTTP results. Both timings exclude a warm-up sample.
+
+Animation Lab baseline tempo: Aurora and Tidal run at 6× their concept speed;
+Fireflies, Molten, Ripple and Prism Weave run at 2×. Heartbeat and Twin Orbit
+retain their concept timing. The Speed control scales these baselines as usual;
+rendering remains paced at 33 ms at 100% Speed.

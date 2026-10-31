@@ -43,12 +43,12 @@ static light_t hue(float h,float saturation) {
 static light_t render(effect_t effect,uint64_t ms,float x) {
     switch (effect) {
     case EFFECT_AURORA: {
-        float a=(moving_wave(x*.52f,-52,ms)+1)/2;
-        float b=(moving_wave(x*.93f,31,ms)+1)/2;
+        float a=(moving_wave(x*.52f,-312,ms)+1)/2;
+        float b=(moving_wave(x*.93f,186,ms)+1)/2;
         return dim(blend((light_t){39,240,167},(light_t){157,60,242},b),.08f+.75f*a*a);
     }
     case EFFECT_TIDAL: {
-        float front=(wave((ms%8000)*TAU/8000-TAU/4)+1)*4.5f;
+        float front=(wave(((ms%8000)*6%8000)*TAU/8000-TAU/4)+1)*4.5f;
         light_t water=dim((light_t){10,83,210},clamp(front-x+1)*.23f);
         return blend(water,(light_t){111,255,219},gaussian(x-front,.65f)*.85f);
     }
@@ -57,17 +57,17 @@ static light_t render(effect_t effect,uint64_t ms,float x) {
         if (index>9) index=9;
         const float *fly=fireflies[index];
         uint64_t period=(uint64_t)(fly[0]*1000000+.5f);
-        float phase=fraction((float)(((ms%period)*1000)%period)/period+fly[1]);
+        float phase=fraction((float)(((ms%period)*2000)%period)/period+fly[1]);
         float level=phase<.36f ? wave(phase/.36f*TAU/2) : 0;
         return dim(blend((light_t){171,255,44},(light_t){255,182,45},fly[2]),level*level*.95f);
     }
     case EFFECT_MOLTEN: {
-        float heat=clamp(.25f+.24f*moving_wave(x*1.7f,220,ms)+
-            .18f*moving_wave(x*.8f,-310,ms)+.2f*moving_wave(x*2.9f,90,ms));
+        float heat=clamp(.25f+.24f*moving_wave(x*1.7f,440,ms)+
+            .18f*moving_wave(x*.8f,-620,ms)+.2f*moving_wave(x*2.9f,180,ms));
         return dim(blend((light_t){155,9,1},(light_t){255,174,19},heat*heat),.22f+.78f*heat);
     }
     case EFFECT_RIPPLE: {
-        float p=(ms%4800)*.0016f,d=absolute(x-4.5f);
+        float p=((ms%4800)*2%4800)*.0016f,d=absolute(x-4.5f);
         return blend(dim((light_t){55,47,190},gaussian(d-p+1.3f,.6f)*.38f),
                      (light_t){126,221,255},gaussian(d-p,.48f)*clamp(1-p/8));
     }
@@ -79,8 +79,8 @@ static light_t render(effect_t effect,uint64_t ms,float x) {
     }
     case EFFECT_PRISM_WEAVE: {
         bool odd=((unsigned)(x+.5f)%2)!=0;
-        float level=.2f+.8f*(moving_wave(x*.7f,odd ? -90 : 90,ms)+1)/2;
-        float h=.47f+.46f*(moving_wave(x*.42f,odd ? -38 : 70,ms)+1)/2;
+        float level=.2f+.8f*(moving_wave(x*.7f,odd ? -180 : 180,ms)+1)/2;
+        float h=.47f+.46f*(moving_wave(x*.42f,odd ? -76 : 140,ms)+1)/2;
         return dim(hue(h,.78f),level);
     }
     case EFFECT_TWIN_ORBIT: {
