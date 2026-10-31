@@ -30,8 +30,8 @@ export async function padRequest(path, method = 'POST') {
 function restoreCommand(snapshot) {
   if (typeof snapshot?.active !== 'boolean' || !Number.isInteger(snapshot.fade_ms) ||
       snapshot.fade_ms < 0 || snapshot.fade_ms > 2000 || !Array.isArray(snapshot.colors) ||
-      snapshot.colors.length !== PAD_COUNT || !snapshot.colors.every(c => /^#[0-9a-f]{6}$/i.test(c)))
-    throw new Error('Board does not provide a valid eight-pad status.');
+      ![PAD_COUNT, 10].includes(snapshot.colors.length) || !snapshot.colors.every(c => /^#[0-9a-f]{6}$/i.test(c)))
+    throw new Error('Board does not provide a valid pad status.');
   return `/api/pads/set/0/${snapshot.fade_ms}/${snapshot.colors.map(c => c.slice(1)).join('')}`;
 }
 

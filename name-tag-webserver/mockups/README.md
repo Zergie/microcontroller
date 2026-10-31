@@ -28,3 +28,7 @@ can be persisted by existing firmware; no flash-persistence behavior is changed.
 
 Tests: `node --test name-tag-webserver/tests/live-preview.test.mjs`.
 No firmware build or flash is needed.
+
+Boards whose pad status contains ten colors are also supported: the backward-
+compatible eight-color frame command drives LEDs 1–8, while restoration retains
+all ten saved colors. The preview mask still leaves LEDs 9 and 10 off.

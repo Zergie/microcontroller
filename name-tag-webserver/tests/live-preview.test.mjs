@@ -61,5 +61,14 @@ test('Reopening during restoration waits for it, then captures a fresh baseline'
 });
 test('Malformed board status never issues a write',async()=>{
  const f=fixture();f.live.start();f.waiting[0].resolve({colors:[]});await settle();
- assert.equal(f.requests.length,1);assert.match(f.statuses.at(-1),/valid eight-pad status/);
+ assert.equal(f.requests.length,1);assert.match(f.statuses.at(-1),/valid pad status/);
+});
+
+test('A ten-color board status restores all saved colors through the backward-compatible pad API',async()=>{
+ const f=fixture();f.live.start();
+ f.waiting[0].resolve({...snapshot(false),colors:[...snapshot(false).colors,'#abcdef','#654321']});await settle();
+ assert.ok(f.requests[1].path.startsWith('/api/pads/set/255/0/'));
+ const stopped=f.live.stop();f.waiting[1].resolve({});await settle();
+ assert.equal(f.requests[2].path,'/api/pads/set/0/1700/'+'123456'.repeat(8)+'abcdef654321');
+ f.waiting[2].resolve({});await settle();f.waiting[3].resolve({});await stopped;
 });
