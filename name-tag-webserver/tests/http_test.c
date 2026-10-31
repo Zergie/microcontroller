@@ -70,6 +70,12 @@ int main(void) {
     after=open_file(response); assert(strstr(after.data,"\"pressed_mask\":3")); fs_close_custom(&after);
     after=open_file("/api/animation.json"); assert(strstr(after.data,"\"control_view\":\"pads\"")); fs_close_custom(&after);
     assert(begin(&connections[0], "/api/pads/release", 1, response) == ERR_ARG && pads_pressed(1000)==3);
+    pads_config_t preferences=pads_config();
+    assert(begin(&connections[0], "/api/pads/pulse/4/536", 0, response) == ERR_OK);
+    httpd_post_finished(&connections[0],response,sizeof(response));
+    after=open_file(response); assert(strstr(after.data,"\"fade_ms\":1500")); fs_close_custom(&after);
+    pads_config_t unchanged=pads_config(); assert(pads_config_equal(&preferences,&unchanged));
+    assert(begin(&connections[0], "/api/pads/pulse/4/2001", 0, response) == ERR_ARG);
     assert(begin(&connections[0], "/api/view/animations", 0, response) == ERR_OK);
     httpd_post_finished(&connections[0],response,sizeof(response));
     after=open_file(response); assert(strstr(after.data,"\"active\":false")); fs_close_custom(&after);

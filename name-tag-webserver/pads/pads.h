@@ -15,6 +15,8 @@ bool pads_active(void);
 bool pads_apply(unsigned mask, const pads_config_t *config, uint64_t now_ms);
 // Fast transport: never changes settings or reactivates a closed pad view.
 bool pads_set_pressed(unsigned mask, uint64_t now_ms);
+// A transient note envelope. Never changes colors, saved fade or active view.
+bool pads_pulse(unsigned mask, unsigned duration_ms, uint64_t now_ms);
 void pads_release(uint64_t now_ms);
 unsigned pads_pressed(uint64_t now_ms);
 // One frame for held/fading pads; all LEDs beyond the first eight are black.

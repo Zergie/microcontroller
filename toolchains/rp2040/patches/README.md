@@ -16,7 +16,7 @@ length; GET responses use persistent interface storage.
 The existing Windows NCM divisor fix (TinyUSB PR #3914) remains applied.
 No DNS server or default gateway is introduced by this patch.
 
-`rp2040-usb-webserver/tests/run_ncm.py` extracts the actual control callback from the installed
+`shared/rp2040-usb-web/tests/run_ncm.py` extracts the actual control callback from the installed
 SDK for host tests under ASan/UBSan. The original callback fails the packet
 filter test; the patched callback must pass packet filter, 4/8-byte input
 sizes, DATA stages, negotiated limits and rejection tests. The firmware

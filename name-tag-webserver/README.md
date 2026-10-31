@@ -143,7 +143,7 @@ the board releases them and starts the configured fade. Leaving the view resumes
 animations. With older firmware the pad layout can be previewed, but its
 controls remain disabled until firmware is updated.
 
-Current firmware provides a persistent WebSocket on port 81 for pad masks only.
+Current firmware provides a persistent WebSocket on port 81 for pad masks and transient song pulses.
 The frontend warms the connection on entering the view and sends each changed
 mask without waiting for an HTTP round trip; colors and fade use a separate
 HTTP settings queue. The local server proxies the WebSocket as well as HTTP.
@@ -195,9 +195,11 @@ Each LED starts at full brightness and immediately releases into a fade lasting
 the note's complete beat-derived duration (rounded to the API's integer
 milliseconds). Half notes therefore fade for twice as long as quarter notes.
 The audio holds the note with a separate short 20 ms release and articulation
-gap. Songs retain the manual pad fade locally and restore it when leaving the
-view. The per-note board fade can be saved during a song; after power loss or
-reloading in Songs, adjust the manual fade in LED Pads if necessary.
+gap. Each note uses a transient pulse command with its own duration. Manual pad
+fade and colors remain the persistent preferences throughout playback, including
+long songs, interruptions and power loss. No browser-side restoration is needed.
+The pulse commands require this firmware build; install matching firmware before
+using Songs from the updated development frontend.
 
 Stop, song changes, view changes, loss of connection/focus and hiding or leaving
 the page cancel future notes and silence audio; already triggered LED fades
@@ -362,7 +364,13 @@ they have not all been visually checked on this hardware.
 ## Ownership and API
 
 `animations/` owns effects and sequencing; `pixels/` owns PIO/DMA hardware;
-`api/` owns command parsing and snapshots; `web/` owns the controller. Shared
+`api/` owns command parsing and snapshots; `web/` owns the controller. `web/pads.js` is the DOM adapter;
+`web/pad-session.js` owns holds, local audio, songs and lifecycle;
+`web/pad-transport.js` orders configuration, held masks and transient pulses.
+It avoids redundant configuration requests and keeps WebSocket masks independent
+of HTTP work.
+Rendering reads session snapshots and never sends commands or starts sound.
+See [CONTEXT.md](CONTEXT.md) for ownership and invariants. Shared
 transport and tools live in [`../shared/rp2040-usb-web`](../shared/rp2040-usb-web).
 See [API.md](API.md).
 

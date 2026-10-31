@@ -23,6 +23,17 @@ static int hex(char c) {
 int pads_api_command(const char *uri,uint64_t now) {
     if (!strcmp(uri,"/api/view/animations")) { pads_set_active(false,now); return 200; }
     if (!strcmp(uri,"/api/pads/release")) { pads_release(now); return 200; }
+    const char pulse_prefix[]="/api/pads/pulse/";
+    if (!strncmp(uri,pulse_prefix,sizeof(pulse_prefix)-1)) {
+        const char *p=uri+sizeof(pulse_prefix)-1;
+        unsigned mask,duration;
+        // Parse the final number with the same bounded parser, without accepting suffixes.
+        char command[32];
+        if (strlen(p)+2>sizeof(command)) return 400;
+        snprintf(command,sizeof(command),"%s/",p); p=command;
+        if (!number(&p,&mask) || !number(&p,&duration) || *p) return 400;
+        return pads_pulse(mask,duration,now) ? 200 : 400;
+    }
     const char prefix[]="/api/pads/set/";
     const char config_prefix[]="/api/pads/config/";
     bool config_only=!strncmp(uri,config_prefix,sizeof(config_prefix)-1);

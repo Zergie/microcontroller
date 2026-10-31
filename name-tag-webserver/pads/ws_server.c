@@ -29,6 +29,10 @@ static bool press(void *user,uint8_t mask) {
     (void)user;
     return pads_set_pressed(mask,time_us_64()/1000);
 }
+static bool pulse(void *user,uint8_t mask,unsigned duration_ms) {
+    (void)user;
+    return pads_pulse(mask,duration_ms,time_us_64()/1000);
+}
 static void failed(void *arg,err_t error) {
     (void)arg; (void)error;
     if (client.protocol.upgraded) pads_release(time_us_64()/1000);
@@ -54,7 +58,7 @@ static err_t accept_client(void *arg,struct tcp_pcb *pcb,err_t error) {
     (void)arg;
     if (error!=ERR_OK || client.pcb) { tcp_abort(pcb); return ERR_ABRT; }
     memset(&client,0,sizeof(client)); client.pcb=pcb;
-    client.protocol.write=write_bytes; client.protocol.press=press;
+    client.protocol.write=write_bytes; client.protocol.press=press; client.protocol.pulse=pulse;
     client.received_at=time_us_64()/1000;
     tcp_nagle_disable(pcb);
     tcp_arg(pcb,&client); tcp_recv(pcb,receive); tcp_err(pcb,failed); tcp_poll(pcb,poll_client,1);

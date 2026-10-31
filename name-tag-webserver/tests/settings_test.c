@@ -133,6 +133,24 @@ static void pads_persistence(void) {
     restored=pads_config(); assert(pads_config_equal(&config,&restored));
 }
 
+static void song_preferences(void) {
+    fresh();
+    pads_config_t config=pads_config(); config.fade_ms=1700;
+    assert(pads_configure(&config)); pads_set_active(true,0);
+    settings_poll(0); settings_poll(10000);
+    assert(settings_saved()); unsigned baseline=programs;
+    for (uint64_t now=11000;now<60000;now+=500) {
+        assert(pads_pulse(1u<<((now/500)%8),536,now));
+        settings_poll(now);
+        assert(settings_saved() && programs==baseline);
+    }
+    pads_release(60000); settings_poll(70000); // Background/connection interruption.
+    boot(80000);
+    pads_config_t restored=pads_config();
+    assert(pads_config_equal(&config,&restored) && !pads_pressed(80000));
+    assert(programs==baseline && settings_saved());
+}
+
 static void torn_writes(void) {
     fresh(); settings_poll(10000);
     uint8_t baseline[SETTINGS_BYTES]; memcpy(baseline,flash,sizeof(flash));
@@ -191,6 +209,6 @@ static void rotation_and_corruption(void) {
 }
 
 int main(void) {
-    lifecycle(); batching(); pads_persistence(); torn_writes(); rotation_and_corruption();
+    lifecycle(); batching(); pads_persistence(); song_preferences(); torn_writes(); rotation_and_corruption();
     puts("Settings: reboot restoration, batching, no-op writes, 512 torn writes, CRC corruption, sector rotation and failed-write recovery OK");
 }

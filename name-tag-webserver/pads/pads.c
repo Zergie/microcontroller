@@ -61,6 +61,16 @@ bool pads_set_pressed(unsigned mask,uint64_t now) {
     expire(now); set_mask(mask,now); lease_at=now+PAD_LEASE_MS;
     return true;
 }
+bool pads_pulse(unsigned mask,unsigned duration_ms,uint64_t now) {
+    if (!active || !mask || mask>255 || duration_ms>PAD_MAX_FADE_MS) return false;
+    expire(now);
+    for (unsigned i=0;i<PAD_COUNT;++i) if (mask&(1u<<i)) {
+        pressed&=~(1u<<i);
+        released_at[i]=now; release_duration[i]=duration_ms;
+    }
+    dirty=true;
+    return true;
+}
 bool pads_render(uint64_t now,unsigned brightness,effect_frame_t *frame) {
     if (!active) return false;
     expire(now);

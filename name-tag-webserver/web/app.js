@@ -41,8 +41,7 @@ function showView(view, notify = true) {
   if (manual) {
     $('current').textContent = songView ? 'Songs' : 'LED Pads';
   } else if (latestStatus) showPlaying(latestStatus);
-  pads.setSongMode(songView);
-  pads.setView(manual, notify);
+  pads.setView(view, notify);
   closeMenu();
 }
 function showPlaying(data) {

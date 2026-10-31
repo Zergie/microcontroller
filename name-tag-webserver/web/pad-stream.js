@@ -1,4 +1,4 @@
-// One persistent channel for masks only. Settings remain on the HTTP queue.
+// One persistent channel for masks and transient pulses. Settings remain on the HTTP queue.
 export function createPadStream({ onFailure, onReady = () => {} }) {
   let socket, mask = 0, pendingSince = 0, sentAt = 0;
   function close() {
@@ -30,16 +30,20 @@ export function createPadStream({ onFailure, onReady = () => {} }) {
         current.onmessage = event => {
           if (socket !== current) return;
           const bytes = new Uint8Array(event.data);
-          if (bytes.length !== 2 || bytes[0] !== 1) { fail(); return; }
+          if (bytes.length !== 2 || ![1, 2].includes(bytes[0])) { fail(); return; }
           pendingSince = 0;
         };
         current.onclose = current.onerror = () => { if (socket === current) fail(); };
       } catch { fail(); }
     },
     setMask(next) { const changed = mask !== next; mask = next; if (changed) send(true); },
-    pulse(next) {
-      // Release immediately: the board captures its configured fade duration.
-      mask = next; send(true); mask = 0; send(true);
+    pulse(next, duration) {
+      if (socket?.readyState !== WebSocket.OPEN) return;
+      if (socket.bufferedAmount > 64) { fail(); return; }
+      try {
+        socket.send(new Uint8Array([2, next, duration & 255, duration >> 8]));
+        sentAt = Date.now(); pendingSince ||= sentAt;
+      } catch { fail(); }
     },
     isReady: () => socket?.readyState === WebSocket.OPEN,
     heartbeat() {

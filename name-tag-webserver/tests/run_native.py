@@ -13,9 +13,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SHARED = ROOT.parent / 'shared/rp2040-usb-web'
 sys.path.insert(0, str(SHARED / 'tools'))
 from native_runner import compile_and_run
+sys.path.insert(0, str(SHARED / "tests"))
+from run_network import run as test_network
 
 
 def run():
+    test_network()
     with TemporaryDirectory() as temp:
         compile_and_run('animation-edit-tests', [
             'tests/animation_edits_test.c', 'animations/animation_engine.c',

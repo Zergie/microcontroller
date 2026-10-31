@@ -42,6 +42,10 @@ int main(void) {
     struct tcp_pcb a=open_client(); upgrade(&a);
     const uint8_t mask[]={0x82,0x82,0,0,0,0,1,129};
     assert(input(&a,mask,sizeof(mask))==ERR_OK && pads_pressed(now)==129);
+    const uint8_t pulse[]={0x82,0x84,0,0,0,0,2,4,0xf4,1};
+    pads_config_t config=pads_config();
+    assert(input(&a,pulse,sizeof(pulse))==ERR_OK && pads_pressed(now)==129);
+    pads_config_t after=pads_config(); assert(pads_config_equal(&config,&after));
     struct tcp_pcb b=open_client(); assert(listener.accept(NULL,&b,ERR_OK)==ERR_ABRT && b.aborted);
     assert(pads_pressed(now)==129); // Rejected second client cannot release the owner.
     assert(a.recv(a.arg,&a,NULL,ERR_OK)==ERR_OK && a.closed && !pads_pressed(now));

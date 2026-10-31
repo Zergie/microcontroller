@@ -46,13 +46,18 @@ implementations in `tools/`. Docker mounts the repository at `/workspace` so
 both application and shared sources are available. The Node development server
 accepts `--root`, `--port` and `--target` and provides live reload and API proxying.
 For the Name Tag pad controller it also forwards same-origin WebSocket upgrades
-at `/api/pads/ws` to target port 81, rewriting Host/Origin for the device. Other
+at `/api/pads/ws` to target port 81 for masks and transient song pulses, rewriting
+Host/Origin for the device. Other
 upgrade paths and foreign origins are rejected. The firmware WebSocket service
 belongs to Name Tag; the shared HTTP runtime and GPIO firmware are unchanged.
 
 Run both projects' `Test-Native.ps1` and `npm test` after shared changes, then
 build both firmware projects. Shared network/HTTP fakes live in `tests/fakes`;
-network regression suites are run by the GPIO project's native runner. The
+network regression suites live in `tests/` and are run by both projects through
+`tests/run_network.py`. That runner owns DHCP packets, captive redirects, NCM
+negotiation, USB backpressure and watchdog recovery, with shared SDK fakes and
+no dependency on either application directory. It can also run directly in the
+toolchain container. The
 Name Tag suite also exercises shared HTTP with its own real application adapter.
 
 `Test-Native.ps1` caches compiled host programs in each project's ignored

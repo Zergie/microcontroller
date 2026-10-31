@@ -17,7 +17,7 @@ typedef struct {
     bool (*program)(unsigned page, const uint8_t data[SETTINGS_PAGE_SIZE]);
 } settings_storage_t;
 
-// Call after animation_init. Loads the newest valid versioned/CRC record, or
+// Call after animation_init. Loads the newest valid CRC record, or
 // keeps defaults. Poll from the main loop, never from an HTTP/USB callback.
 void settings_init(const settings_storage_t *storage, uint64_t now_ms);
 void settings_poll(uint64_t now_ms);

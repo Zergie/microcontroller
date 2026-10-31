@@ -82,5 +82,22 @@ int main(void) {
         assert(frame.pixels[0][0].r>=127 && frame.pixels[0][0].r<=128);
         assert(pads_render(note_lengths[i],100,&frame) && frame.pixels[0][0].r==0);
     }
+    pads_init(); config=pads_config(); config.colors[0]=(rgb_t){255,0,0};
+    assert(pads_configure(&config));
+    assert(!pads_pulse(1,500,0)); // A note cannot activate a closed view.
+    pads_set_active(true,0);
+    assert(pads_api_command("/api/pads/pulse/1/500",100)==200);
+    assert(pads_pressed(100)==0);
+    assert(pads_render(100,100,&frame) && frame.pixels[0][0].r==255);
+    assert(pads_render(350,100,&frame) && frame.pixels[0][0].r==127);
+    assert(pads_pulse(2,1000,350)); // Another note does not restart the first envelope.
+    assert(pads_render(600,100,&frame) && !frame.pixels[0][0].r);
+    pads_config_t after_pulse=pads_config(); assert(pads_config_equal(&config,&after_pulse));
+    const char *bad_pulses[]={"/api/pads/pulse/0/100", "/api/pads/pulse/256/100",
+        "/api/pads/pulse/1/2001", "/api/pads/pulse/1/500/", "/api/pads/pulse/-1/500"};
+    for (unsigned i=0;i<sizeof(bad_pulses)/sizeof(*bad_pulses);++i)
+        assert(pads_api_command(bad_pulses[i],600)==400);
+    assert(pads_pulse(1,0,700));
+    assert(pads_render(700,100,&frame) && !frame.pixels[0][0].r);
     puts("LED pads: concurrent holds, independent fades, re-press, global brightness, lease expiry, extra LEDs off, atomic API and JSON bounds OK");
 }

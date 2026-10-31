@@ -102,6 +102,7 @@ New firmware also advertises `pads_transport:"websocket-v1"`.
 ```text
 POST /api/pads/set/{mask}/{fade_ms}/{colors}
 POST /api/pads/config/{fade_ms}/{colors}
+POST /api/pads/pulse/{mask}/{duration_ms}
 POST /api/pads/release
 POST /api/view/animations
 ```
@@ -121,6 +122,14 @@ fades. `release` does the same immediately and stays in pad mode.
 in pad mode. Colors, fade duration and selected view use the shared ten-second
 persistence debounce; touches and heartbeats do not create flash writes.
 
+`pulse` starts an immediately released note envelope for a nonzero mask (1–255)
+with an integer duration of 0–2000 ms. It requires an already active pad view;
+it never changes colors, manual fade, view or persisted settings. Each selected
+LED captures its own duration, so overlapping notes fade independently. Repeating
+a pulse retriggers its selected LEDs. Zero duration leaves them dark. A pulse
+does not renew held-pad leases. It returns 400 if validation or the active-view
+precondition fails, with no partial changes.
+
 ### Fast pad transport
 
 The current frontend uses `config` to apply colors/fade and enter pad mode,
@@ -135,8 +144,13 @@ checks its own origin and rewrites the upstream origin. Frames follow
 [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455), with masked client frames,
 fragmented binary messages, ping/pong and bounded receive storage.
 
-Each binary message has exactly two bytes: `[1, mask]`, where `mask` is the
-eight-bit held-pad state. The response is the same two bytes after application.
+A held-pad message is two bytes: `[1, mask]`, where `mask` is the eight-bit
+held-pad state. A transient pulse is four bytes: `[2, mask, duration_lo,
+duration_hi]`, with duration in unsigned little-endian milliseconds (0–2000).
+The nonzero mask and active-view precondition are the same as HTTP `pulse`.
+Both messages are acknowledged as `[command, mask]` after application. Pulse
+support is additive to `websocket-v1`; older firmware understands only command 1.
+Use matching firmware for Songs from the updated frontend.
 The browser sends subsequent changes immediately, without waiting for replies.
 It sends held masks every 250 ms and idle masks every second; missing replies
 for over one second stop the controller. The 1200 ms board lease still applies.

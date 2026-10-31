@@ -5,7 +5,7 @@
 
 static uint8_t output[4096];
 static size_t output_used;
-static unsigned pressed,commands;
+static unsigned pressed,commands,duration;
 static bool allow_write=true,allow_press=true;
 static bool write_bytes(void *user,const uint8_t *data,size_t length) {
     (void)user;
@@ -13,9 +13,10 @@ static bool write_bytes(void *user,const uint8_t *data,size_t length) {
     assert(output_used+length<sizeof(output)); memcpy(output+output_used,data,length); output_used+=length; return true;
 }
 static bool press(void *user,uint8_t mask) { (void)user; pressed=mask; ++commands; return allow_press; }
+static bool pulse(void *user,uint8_t mask,unsigned ms) { duration=ms; return press(user,mask); }
 static pad_ws_protocol_t protocol(void) {
     output_used=commands=pressed=0; allow_write=allow_press=true;
-    return (pad_ws_protocol_t){.write=write_bytes,.press=press};
+    return (pad_ws_protocol_t){.write=write_bytes,.press=press,.pulse=pulse};
 }
 static void request(char *buffer,size_t capacity,const char *key,const char *origin) {
     snprintf(buffer,capacity,"GET /api/pads/ws HTTP/1.1\r\nHost: rp2040.local:81\r\nUpgrade: WebSocket\r\nConnection: keep-alive, Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: %s\r\nOrigin: %s\r\n\r\n",key,origin);
@@ -50,6 +51,10 @@ int main(int argc,char **argv) {
     n=frame(data,2,false,payload,1); n+=frame(data+n,9,true,(uint8_t *)"ping",4); n+=frame(data+n,0,true,payload+1,1);
     assert(pad_ws_feed(&ws,data,n) && commands==4);
     assert(memchr(output,0x8a,output_used));
+    uint8_t note[]={2,64,0x2f,0x04}; // 1071 ms, little endian.
+    n=frame(data,2,false,note,2); n+=frame(data+n,0,true,note+2,2);
+    assert(pad_ws_feed(&ws,data,n) && commands==5 && pressed==64 && duration==1071);
+    assert(output[output_used-2]==2 && output[output_used-1]==64);
     for (unsigned kind=0;kind<10;++kind) {
         ws=upgraded(); payload[0]=1; payload[1]=255; n=frame(data,2,true,payload,2);
         switch (kind) {

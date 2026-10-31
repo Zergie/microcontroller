@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT.parent / "shared/rp2040-usb-web/tools"))
+sys.path.insert(0, str(ROOT / 'tools'))
 from native_runner import compile_and_run
 
 

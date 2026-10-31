@@ -38,10 +38,14 @@ describe('LED pad controller', { concurrency: 4 }, () => {
       state.sockets.push(ws);
       ws.onMessage(message => {
         const bytes = [...message]; state.messages.push(bytes);
-        if (bytes[1]) state.pulses.push({ mask: bytes[1], fade: state.fade_ms });
-        assert.equal(bytes.length, 2); assert.equal(bytes[0], 1);
-        if (state.active) state.pressed_mask = bytes[1];
-        if (state.ack) ws.send(Buffer.from(bytes));
+        if (bytes[0] === 2) {
+          assert.equal(bytes.length, 4);
+          state.pulses.push({ mask: bytes[1], fade: bytes[2] | bytes[3] << 8 });
+        } else {
+          assert.equal(bytes.length, 2); assert.equal(bytes[0], 1);
+          if (state.active) state.pressed_mask = bytes[1];
+        }
+        if (state.ack) ws.send(Buffer.from(bytes.slice(0, 2)));
       });
       ws.onClose(() => { state.pressed_mask = 0; });
     });
@@ -63,6 +67,9 @@ describe('LED pad controller', { concurrency: 4 }, () => {
             const parts = path.split('/');
             state.active = true; state.fade_ms = Number(parts[4]);
             state.colors = parts[5].match(/.{6}/g).map(c => `#${c}`);
+          } else if (path.startsWith('/api/pads/pulse/')) {
+            const parts = path.split('/');
+            state.pulses.push({ mask: Number(parts[4]), fade: Number(parts[5]) });
           } else if (path === '/api/pads/release') state.pressed_mask = 0;
         } finally { state.inFlight--; }
       }
@@ -195,11 +202,12 @@ describe('LED pad controller', { concurrency: 4 }, () => {
       assert.equal(await page.locator('#song-play').textContent(), 'Stop');
       assert.equal(await page.evaluate(() => audioTest.calls.every(call => call.gesture)), true);
       const received = () => fast ? state.messages.map(bytes => bytes[1]) :
-        state.posts.filter(path => path.startsWith('/api/pads/set/')).map(path => Number(path.split('/')[4]));
+        state.posts.filter(path => path.startsWith('/api/pads/pulse/') || path.startsWith('/api/pads/set/')).map(path => Number(path.split('/')[4]));
       await until(() => received().includes(64));
       assert.ok(received().indexOf(128) < received().indexOf(64));
       assert.equal(await page.evaluate(() => audioTest.contexts[0].gains[7].gain.events.some(e => e.type === 'ramp' && e.value === 0.125)), true);
-      await until(() => received().lastIndexOf(0) > received().indexOf(128));
+      assert.equal(state.pressed_mask, 0); // Pulse envelopes release on the board itself.
+      assert.equal(state.fade_ms, 1000);
       await page.click('#song-play'); await until(() => state.pressed_mask === 0);
       assert.equal(await audioMask(page), 0);
       assert.equal(await page.locator('#song-play').textContent(), 'Play');
@@ -244,8 +252,9 @@ describe('LED pad controller', { concurrency: 4 }, () => {
     const half = state.pulses.find(pulse => pulse.mask === 8);
     assert.equal(first.fade, Math.round(60000 / 112));
     assert.equal(half.fade, Math.round(2 * 60000 / 112));
-    const masks = state.messages.map(bytes => bytes[1]);
-    for (let i = 0; i < masks.length; i++) if (masks[i]) assert.equal(masks[i + 1], 0);
+    assert.equal(state.pressed_mask, 0);
+    assert.equal(state.fade_ms, 1000);
+    assert.ok(state.messages.filter(bytes => bytes[0] === 2).every(bytes => bytes.length === 4));
     await page.click('#song-play');
   });
 
@@ -261,11 +270,11 @@ describe('LED pad controller', { concurrency: 4 }, () => {
     assert.ok(state.pulses.every(pulse => [167, 333].includes(pulse.fade)));
   });
 
-  test('Leaving Songs during an HTTP pulse restores the manual fade before resuming animation', async t => {
+  test('Leaving Songs during an HTTP pulse preserves the manual fade before resuming animation', async t => {
     const { page, state } = await fixture(t); await enterSongs(page);
     state.delay = 250;
     await page.click('#song-play');
-    await until(() => state.posts.some(path => path.startsWith('/api/pads/set/128/')));
+    await until(() => state.posts.some(path => path.startsWith('/api/pads/pulse/128/')));
     await page.click('#menu-toggle'); await page.click('#view-animations');
     await until(() => !state.active && state.fade_ms === 1000 && state.inFlight === 0);
     assert.equal(state.pressed_mask, 0);
