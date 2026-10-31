@@ -5,7 +5,7 @@
 #include <string.h>
 
 static void expect_unchanged(const char *uri, int status) {
-    char before[1024], after[1024];
+    char before[ANIMATION_SNAPSHOT_CAPACITY], after[ANIMATION_SNAPSHOT_CAPACITY];
     assert(animation_api_snapshot(before, sizeof(before)));
     assert(animation_api_command(uri, 9000) == status);
     assert(animation_api_snapshot(after, sizeof(after)));
@@ -86,7 +86,7 @@ static void effect_contracts(void) {
 static void api_contracts(void) {
     animation_init(0,42);
     animation_api_set_boot_id(UINT64_C(0x0123456789abcdef));
-    char status[1024];
+    char status[ANIMATION_SNAPSHOT_CAPACITY];
     assert(animation_api_snapshot(status,sizeof(status)));
     assert(strstr(status,"\"boot_id\":\"0123456789abcdef\""));
     animation_api_set_boot_id(UINT64_C(0xfedcba9876543210));
@@ -106,6 +106,13 @@ static void api_contracts(void) {
     };
     for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); ++i) expect_unchanged(invalid[i], 400);
     expect_unchanged("/api/no-such-command", 404);
+    for (effect_t effect=EFFECT_AURORA;effect<EFFECT_COUNT;++effect) {
+        char command[128];
+        snprintf(command,sizeof(command),"/api/animation/set/%s/20/100/300/00ff28/original",effect_id(effect));
+        assert(animation_api_command(command,9000)==200 && animation_current()==effect);
+    }
+    expect_unchanged("/api/animation/set/meteor-shower/20/100/300/00ff28/original",400);
+    expect_unchanged("/api/animation/set/raindrops/20/100/300/00ff28/original",400);
     char long_uri[256]; memset(long_uri, 'a', sizeof(long_uri));
     memcpy(long_uri, "/api/animation/set/", 19); long_uri[255] = 0;
     expect_unchanged(long_uri, 400);
@@ -161,10 +168,10 @@ static void random_color_contracts(void) {
 }
 
 static void snapshot_bounds(void) {
-    char expected[1024]; assert(animation_api_snapshot(expected, sizeof(expected)));
+    char expected[ANIMATION_SNAPSHOT_CAPACITY]; assert(animation_api_snapshot(expected, sizeof(expected)));
     size_t required = strlen(expected) + 1;
-    for (size_t capacity = 0; capacity <= 1024; ++capacity) {
-        unsigned char guarded[1026]; memset(guarded, 0xa5, sizeof(guarded));
+    for (size_t capacity = 0; capacity <= ANIMATION_SNAPSHOT_CAPACITY; ++capacity) {
+        unsigned char guarded[ANIMATION_SNAPSHOT_CAPACITY+2]; memset(guarded, 0xa5, sizeof(guarded));
         bool success = animation_api_snapshot((char *)guarded + 1, capacity);
         assert(success == (capacity >= required));
         assert(guarded[0] == 0xa5 && guarded[capacity + 1] == 0xa5);
@@ -175,8 +182,8 @@ static void snapshot_bounds(void) {
 int main(int argc, char **argv) {
     animation_init(0, 42);
     if (argc == 2 && !strcmp(argv[1], "--json")) {
-        char json[1024]; assert(animation_api_snapshot(json, sizeof(json))); puts(json); return 0;
+        char json[ANIMATION_SNAPSHOT_CAPACITY]; assert(animation_api_snapshot(json, sizeof(json))); puts(json); return 0;
     }
     random_rounds(); effect_contracts(); api_contracts(); random_color_contracts(); snapshot_bounds();
-    puts("Animations/API: all 13 effects, 100 shuffle rounds, intervals, brightness, atomic rejection and JSON bounds OK");
+    puts("Animations/API: all 21 effects, 100 shuffle rounds, intervals, brightness, atomic rejection and JSON bounds OK");
 }

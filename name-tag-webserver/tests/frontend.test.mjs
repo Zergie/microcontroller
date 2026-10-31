@@ -28,9 +28,11 @@ describe('Animation controller', { concurrency: 4 }, () => {
     const state = { boot_id: '0000000000000001', selection: 'random', current: 'rainbow', brightness_percent: 20,
       speed_percent: 100, interval_seconds: 300, color: originalColors ? '#00ff28' : '#00ff64', pixel_count: 10, pin: 0,
       original_colors: originalColors, default_colors: ['#00ff28','#ff0014','#b400ff','#ffffff','#ff6400',
-        '#b400ff','#00ff28','#000000','#00ff28','#000000','#000000','#000000','#000000'],
+        '#b400ff','#00ff28','#000000','#00ff28','#000000','#000000','#000000','#000000',
+        '#27f0a7','#6fffdb','#abff2c','#ffae13','#7eddff','#f72f6b','#22b0ff','#ff942c'],
       effects: ['blink', 'color-cycle', 'comet', 'chase', 'pulse', 'sparkle', 'solid', 'rainbow',
-        'sparkle-pulse', 'rainbow-comet', 'rainbow-chase', 'rainbow-sparkle', 'custom-color-chase'] };
+        'sparkle-pulse', 'rainbow-comet', 'rainbow-chase', 'rainbow-sparkle', 'custom-color-chase',
+        'aurora', 'tidal', 'fireflies', 'molten', 'ripple', 'heartbeat', 'prism-weave', 'twin-orbit'] };
     if (!legacy) state.color_mode = originalColors ? 'original' : 'custom';
     const control = { status: 200, delay: 0, posts: [], state, offline, disconnect: false };
     const errors = [];
@@ -62,10 +64,21 @@ describe('Animation controller', { concurrency: 4 }, () => {
     const { page } = await fixture(t);
     assert.equal(await page.locator('header').count(), 0);
     assert.equal(await page.locator('main > :first-child').getAttribute('class'), 'now-playing');
-    assert.equal(await page.locator('#animation option').count(), 14);
+    assert.equal(await page.locator('#animation option').count(), 22);
     assert.equal(await page.locator('#animation').inputValue(), 'random');
     assert.equal(await page.locator('#current').textContent(), 'Rainbow');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  });
+
+  test('All eight selected Lab effects apply through the existing animation control', async t => {
+    const { page, control } = await fixture(t, { originalColors: true });
+    for (const effect of ['aurora','tidal','fireflies','molten','ripple','heartbeat','prism-weave','twin-orbit']) {
+      await page.selectOption('#animation', effect);
+      await page.waitForFunction(effect => document.getElementById('current').textContent.toLowerCase().replaceAll(' ', '-') === effect, effect);
+      assert.equal(control.state.selection, effect);
+      assert.ok(control.posts.some(path => path.includes(`/set/${effect}/`)));
+    }
+    assert.equal(await page.locator('#animation option[value="meteor-shower"], #animation option[value="raindrops"]').count(), 0);
   });
 
   test('A changed board boot reloads the page once and keeps fetching fresh assets', async t => {

@@ -60,8 +60,8 @@ static void sparkle_color_and_random_stream(void) {
     effect_frame_t frame;
     uint32_t random=42;
     for (unsigned now=0;now<=1000;now+=100)
-        CHECK(effect_step(&state,EFFECT_SPARKLE,now,(rgb_t){180,0,255},&random,&frame));
-    CHECK(effect_step(&state,EFFECT_SPARKLE,1100,(rgb_t){0,255,0},&random,&frame));
+        CHECK(effect_step(&state,EFFECT_SPARKLE,now,(rgb_t){180,0,255},true,&random,&frame));
+    CHECK(effect_step(&state,EFFECT_SPARKLE,1100,(rgb_t){0,255,0},true,&random,&frame));
     for (unsigned n=0;n<frame.count;++n)
         for (unsigned i=0;i<PIXEL_COUNT;++i)
             CHECK(frame.pixels[n][i].r==0 && frame.pixels[n][i].b==0);
@@ -112,6 +112,23 @@ static void all_effect_recolor_replays(void) {
     }
 }
 
+static void lab_palette_edits(void) {
+    for (effect_t effect=EFFECT_AURORA;effect<EFFECT_COUNT;++effect) {
+        animation_config_t config=select_effect(effect,5);
+        effect_frame_t original,custom;
+        CHECK(animation_next(1,&original)==false);
+        animation_refresh(); CHECK(animation_next(1,&original));
+        // Selecting the same RGB as the default must still switch from the
+        // original multicolor palette to a single-color envelope immediately.
+        config.color_mode=COLOR_CUSTOM; config.color=effect_default_color(effect);
+        CHECK(animation_configure(&config,2)); CHECK(animation_next(2,&custom));
+        config.color_mode=COLOR_ORIGINAL;
+        CHECK(animation_configure(&config,3)); CHECK(animation_next(3,&custom));
+        CHECK(!memcmp(original.pixels[0],custom.pixels[0],sizeof(original.pixels[0])));
+        CHECK(!animation_next(4,&custom));
+    }
+}
+
 static void brightness_scaling(void) {
     animation_config_t config=select_effect(EFFECT_SOLID,100);
     config.color_mode=COLOR_CUSTOM; config.color=(rgb_t){255,127,40};
@@ -131,7 +148,7 @@ int main(void) {
     immediate_color_and_phase(); revisit_without_black_wait();
     sparkle_color_and_random_stream(); fractional_clock_and_noop();
     all_effect_recolor_replays();
-    brightness_scaling();
+    brightness_scaling(); lab_palette_edits();
     if (failures) { fprintf(stderr,"%u animation edit checks failed\n",failures); return 1; }
     puts("Animation edits: immediate colors, preserved phase/RNG, immediate revisits, fractional clock and brightness scaling OK");
 }

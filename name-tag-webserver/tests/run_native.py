@@ -22,15 +22,31 @@ def run():
     with TemporaryDirectory() as temp:
         compile_and_run('animation-edit-tests', [
             'tests/animation_edits_test.c', 'animations/animation_engine.c',
-            'animations/effects.c',
+            'animations/effects.c', 'animations/lab_effects.c',
         ], temp, root=ROOT, include_dirs=[ROOT])
         compile_and_run('animation-tests', [
             'tests/animation_test.c', 'animations/animation_engine.c',
-            'animations/effects.c', 'api/animation_api.c', 'settings/settings.c', 'pads/pads.c',
+            'animations/effects.c', 'animations/lab_effects.c', 'api/animation_api.c', 'settings/settings.c', 'pads/pads.c',
         ], temp, root=ROOT, include_dirs=[ROOT])
         compile_and_run('settings-tests', ['tests/settings_test.c', 'settings/settings.c', 'pads/pads.c',
-                        'animations/animation_engine.c', 'animations/effects.c'],
+                        'animations/animation_engine.c', 'animations/effects.c', 'animations/lab_effects.c'],
                         temp, root=ROOT, include_dirs=[ROOT])
+        compile_and_run('lab-effects-tests', ['tests/lab_effects_test.c',
+                        'animations/effects.c', 'animations/lab_effects.c'],
+                        temp, root=ROOT, include_dirs=[ROOT])
+        expected = json.loads((ROOT / 'tests/fixtures/lab-frames.json').read_text(encoding='utf-8'))
+        trace = subprocess.check_output([str(Path(temp) / 'lab-effects-tests'), '--trace'], text=True).splitlines()
+        assert len(trace) == len(expected)
+        worst = 0
+        for line, reference in zip(trace, expected):
+            identity, time, *values = line.split()
+            assert identity == reference['id'] and int(time) == reference['ms']
+            wanted = [v for pixel in reference['pixels'] for v in pixel]
+            assert len(values) == len(wanted)
+            error = max(abs(int(a)-b) for a, b in zip(values, wanted))
+            assert error <= 2, (identity, time, error)
+            worst = max(worst, error)
+        print(f'Animation Lab: 80 mockup reference frames, maximum RGB difference {worst}/255')
         # Exercise the actual linker guard at both sides of the reserved area.
         obj = Path(temp) / 'guard.o'
         subprocess.run(['gcc', '-c', '-x', 'c', '-o', obj, '-'],
@@ -61,11 +77,11 @@ def run():
                         root=ROOT, include_dirs=[ROOT, ROOT / 'tests/fakes'])
         data = json.loads(subprocess.check_output([str(Path(temp) / 'animation-tests'), '--json']))
         assert data['selection'] == 'random' and data['current'] in data['effects']
-        assert len(data['effects']) == len(set(data['effects'])) == 13
+        assert len(data['effects']) == len(set(data['effects'])) == 21
         assert data['pin'] == 0 and data['pixel_count'] == 10
         assert data['brightness_percent'] == 20 and data['interval_seconds'] == 300
         assert data['speed_percent'] == 100 and data['color'] == '#00ff28'
-        assert data['original_colors'] is True and len(data['default_colors']) == 13
+        assert data['original_colors'] is True and len(data['default_colors']) == 21
         output = Path(temp) / 'web_assets.h'
         subprocess.run([sys.executable, SHARED / 'tools/embed_web.py', ROOT / 'web', output], check=True)
         generated = output.read_text()
@@ -84,7 +100,7 @@ def run():
         print('Name Tag: JSON schema and exact embedded frontend payloads OK')
         compile_and_run('http-tests', [
             ROOT / 'tests/http_test.c', ROOT / 'api/web_routes.c', ROOT / 'api/animation_api.c',
-            ROOT / 'animations/animation_engine.c', ROOT / 'animations/effects.c', ROOT / 'settings/settings.c', ROOT / 'pads/pads.c', ROOT / 'api/pads_api.c',
+            ROOT / 'animations/animation_engine.c', ROOT / 'animations/effects.c', ROOT / 'animations/lab_effects.c', ROOT / 'settings/settings.c', ROOT / 'pads/pads.c', ROOT / 'api/pads_api.c',
             SHARED / 'web_fs.c', SHARED / 'captive_portal.c', SHARED / 'tests/fakes/network.c',
         ], temp, root=ROOT, include_dirs=[ROOT, ROOT / 'tests/fakes', SHARED,
                                         SHARED / 'tests/fakes', temp],

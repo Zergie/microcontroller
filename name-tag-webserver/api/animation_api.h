@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#define ANIMATION_SNAPSHOT_CAPACITY 1536u
 // Empty-body POST URL. Parse and validate the entire command before mutation.
 int animation_api_command(const char *uri, uint64_t now_ms);
 // Ephemeral identity of this boot, independent of saved settings.

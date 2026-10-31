@@ -151,6 +151,21 @@ static void song_preferences(void) {
     assert(programs==baseline && settings_saved());
 }
 
+static void lab_selection_persistence(void) {
+    for (effect_t effect=EFFECT_AURORA;effect<EFFECT_COUNT;++effect) {
+        fresh();
+        animation_config_t config=animation_config();
+        config.random=false; config.effect=effect;
+        config.color_mode=COLOR_RANDOM; config.speed_percent=800;
+        assert(animation_configure(&config,0));
+        settings_poll(0); settings_poll(10000);
+        boot(20000);
+        animation_config_t restored=animation_config();
+        assert(!restored.random && restored.effect==effect && restored.color_mode==COLOR_RANDOM);
+        assert(restored.speed_percent==800 && settings_saved());
+    }
+}
+
 static void torn_writes(void) {
     fresh(); settings_poll(10000);
     uint8_t baseline[SETTINGS_BYTES]; memcpy(baseline,flash,sizeof(flash));
@@ -209,6 +224,6 @@ static void rotation_and_corruption(void) {
 }
 
 int main(void) {
-    lifecycle(); batching(); pads_persistence(); song_preferences(); torn_writes(); rotation_and_corruption();
+    lifecycle(); batching(); pads_persistence(); song_preferences(); lab_selection_persistence(); torn_writes(); rotation_and_corruption();
     puts("Settings: reboot restoration, batching, no-op writes, 512 torn writes, CRC corruption, sector rotation and failed-write recovery OK");
 }

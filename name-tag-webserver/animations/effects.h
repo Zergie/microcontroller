@@ -10,7 +10,10 @@ typedef enum {
     EFFECT_BLINK, EFFECT_COLOR_CYCLE, EFFECT_COMET, EFFECT_CHASE, EFFECT_PULSE,
     EFFECT_SPARKLE, EFFECT_SOLID, EFFECT_RAINBOW, EFFECT_SPARKLE_PULSE,
     EFFECT_RAINBOW_COMET, EFFECT_RAINBOW_CHASE, EFFECT_RAINBOW_SPARKLE,
-    EFFECT_CUSTOM_COLOR_CHASE, EFFECT_COUNT
+    EFFECT_CUSTOM_COLOR_CHASE,
+    EFFECT_AURORA, EFFECT_TIDAL, EFFECT_FIREFLIES, EFFECT_MOLTEN,
+    EFFECT_RIPPLE, EFFECT_HEARTBEAT, EFFECT_PRISM_WEAVE, EFFECT_TWIN_ORBIT,
+    EFFECT_COUNT
 } effect_t;
 
 // Sparkle's after_draw emits an intermediate show before Animation.show.
@@ -37,5 +40,5 @@ void effect_set_color(effect_state_t *state, effect_t effect, rgb_t color);
 // virtual_ms is monotonic, speed-scaled time. Late calls draw once (no catch-up),
 // matching Animation.animate. No allocation, hardware access or waiting.
 bool effect_step(effect_state_t *state, effect_t effect, uint64_t virtual_ms,
-                 rgb_t color, uint32_t *random_state, effect_frame_t *frame);
+                 rgb_t color, bool original_colors, uint32_t *random_state, effect_frame_t *frame);
 #endif

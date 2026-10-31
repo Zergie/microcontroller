@@ -37,3 +37,11 @@ watchdog recovery and BOOTSEL. Shared network regressions belong there and run
 from both application test runners. Changes to shared code require native and
 browser tests and firmware builds for both projects. Preserve the tested iOS NCM
 behavior, no-DNS/no-default-gateway policy and lwIP response-copy rules.
+
+The animation catalogue contains 13 classic effects plus eight Animation Lab
+concepts: Aurora, Tidal, Fireflies, Molten, Ripple, Heartbeat, Prism Weave and
+Twin Orbit. `animations/lab_effects.c` owns their bounded ten-pixel renderer;
+`lab_curves.h` holds interpolated sine/Gaussian tables. Original mode preserves
+concept palettes; custom/random mode recolors the light envelopes. Append IDs;
+do not renumber existing effects or introduce settings migrations. All 21 effects
+participate in the existing shuffle. Mockup concepts 08/09 remain preview-only.

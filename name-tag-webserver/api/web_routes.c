@@ -10,7 +10,7 @@ static bool write_pads(char *buffer,size_t capacity) {
 int app_http_open(struct fs_file *file, const char *uri) {
     if (!strcmp(uri,"/api/pads.json")) return web_http_json(file,1024,write_pads);
     if (!strcmp(uri, "/api/animation.json"))
-        return web_http_json(file, 1024, animation_api_snapshot);
+        return web_http_json(file, ANIMATION_SNAPSHOT_CAPACITY, animation_api_snapshot);
     return 0;
 }
 

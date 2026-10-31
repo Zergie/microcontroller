@@ -74,6 +74,7 @@ bool animation_config_valid(const animation_config_t *candidate) {
 bool animation_configure(const animation_config_t *candidate, uint64_t now_ms) {
     if (!animation_config_valid(candidate)) return false;
     rgb_t old_color=initialized ? animation_color() : (rgb_t){0};
+    bool palette_changed=initialized && ((config.color_mode==COLOR_ORIGINAL)!=(candidate->color_mode==COLOR_ORIGINAL));
     bool brightness_changed=!initialized || candidate->brightness_percent!=config.brightness_percent;
     bool selection_changed = !initialized || candidate->random != config.random ||
         (!candidate->random && candidate->effect != current);
@@ -88,7 +89,7 @@ bool animation_configure(const animation_config_t *candidate, uint64_t now_ms) {
     }
     if (random_color_selected && !selection_changed) choose_color();
     rgb_t color=animation_color();
-    if (have_draw && (old_color.r!=color.r || old_color.g!=color.g || old_color.b!=color.b))
+    if (have_draw && (palette_changed || old_color.r!=color.r || old_color.g!=color.g || old_color.b!=color.b))
         recolor_pending=true;
     refresh_pending |= brightness_changed;
     initialized=true;
@@ -135,13 +136,13 @@ bool animation_next(uint64_t now_ms, effect_frame_t *frame) {
         before_draw=effects[current];
         drawn_at=now;
         draw_random=random_state;
-        drawn=effect_step(&effects[current],current,now,color,&random_state,frame);
+        drawn=effect_step(&effects[current],current,now,color,config.color_mode==COLOR_ORIGINAL,&random_state,frame);
         have_draw=true;
     } else if (recolor_pending && have_draw) {
         effect_set_color(&before_draw,current,color);
         effect_state_t replay=before_draw;
         uint32_t replay_random=draw_random;
-        drawn=effect_step(&replay,current,drawn_at,color,&replay_random,frame);
+        drawn=effect_step(&replay,current,drawn_at,color,config.color_mode==COLOR_ORIGINAL,&replay_random,frame);
         effects[current]=replay;
     }
     if (!drawn) {

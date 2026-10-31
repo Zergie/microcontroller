@@ -5,6 +5,7 @@
 // C port of the bundled adafruit_led_animation 2.11.1. See LICENSE.txt.
 #include "effects.h"
 #include "circuitpython_math.h"
+#include "lab_effects.h"
 #include <string.h>
 
 static const struct {
@@ -20,7 +21,11 @@ static const struct {
     {"solid", 1000, {0,255,40}}, {"rainbow", 99, {0,0,0}},
     {"sparkle-pulse", 99, {0,255,40}}, {"rainbow-comet", 99, {0,0,0}},
     {"rainbow-chase", 99, {0,0,0}}, {"rainbow-sparkle", 99, {0,0,0}},
-    {"custom-color-chase", 99, {0,0,0}}
+    {"custom-color-chase", 99, {0,0,0}},
+    {"aurora", 33, {39,240,167}}, {"tidal", 33, {111,255,219}},
+    {"fireflies", 33, {171,255,44}}, {"molten", 33, {255,174,19}},
+    {"ripple", 33, {126,221,255}}, {"heartbeat", 33, {247,47,107}},
+    {"prism-weave", 33, {34,176,255}}, {"twin-orbit", 33, {255,148,44}}
 };
 _Static_assert(sizeof(defaults) / sizeof(defaults[0]) == EFFECT_COUNT, "Effect defaults incomplete");
 
@@ -126,7 +131,7 @@ static void chase(effect_state_t *state, effect_t effect, rgb_t color) {
 }
 
 bool effect_step(effect_state_t *state, effect_t effect, uint64_t now,
-                 rgb_t color, uint32_t *random_state, effect_frame_t *frame) {
+                 rgb_t color, bool original_colors, uint32_t *random_state, effect_frame_t *frame) {
     if ((unsigned)effect >= EFFECT_COUNT || now < state->next_due) return false;
     effect_set_color(state,effect,color);
     if (!state->generator_started) {
@@ -179,6 +184,9 @@ bool effect_step(effect_state_t *state, effect_t effect, uint64_t now,
             }
             break;
         }
+        case EFFECT_AURORA: case EFFECT_TIDAL: case EFFECT_FIREFLIES: case EFFECT_MOLTEN:
+        case EFFECT_RIPPLE: case EFFECT_HEARTBEAT: case EFFECT_PRISM_WEAVE: case EFFECT_TWIN_ORBIT:
+            lab_effect_render(effect,elapsed,color,original_colors,state->pixels); break;
         default: return false;
     }
     if (effect==EFFECT_SPARKLE || effect==EFFECT_SPARKLE_PULSE) {

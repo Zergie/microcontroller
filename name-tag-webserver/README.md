@@ -63,9 +63,10 @@ a page opened from older firmware needs one manual reload after installation.
 
 The controller selects **Blink, Color Cycle, Comet, Chase, Pulse, Sparkle,
 Solid, Rainbow, Sparkle Pulse, Rainbow Comet, Rainbow Chase, Rainbow Sparkle,
-Custom Color Chase**, or **Random loop · all effects**.
+Custom Color Chase**, plus **Aurora, Tidal, Fireflies, Molten, Ripple, Heartbeat, Prism Weave,
+Twin Orbit**, or **Random loop · all effects**.
 
-Random loop is the boot default: it shuffles all 13 effects, plays each exactly
+Random loop is the boot default: it shuffles all 21 effects, plays each exactly
 once per round, then reshuffles. The effect at the round boundary never repeats
 immediately. The default interval is **300 seconds** per effect, as in the old
 sequence. The current effect is displayed separately from the selected loop.
@@ -89,6 +90,29 @@ phase or random stream. Quick effect revisits draw immediately after the clear
 frame, preserving progress without waiting on the previous visit's deadline.
 Fractional elapsed time survives parameter changes; identical requests do not
 insert extra output frames.
+
+### Animation Lab additions
+
+Eight selected concepts from `mockups/animation-lab.html` run natively on all
+**ten LEDs**: Aurora (mint/violet curtains), Tidal (blue filling tide), Fireflies
+(sparse gold/green pulses), Molten (embers), Ripple (centre-out waves), Heartbeat
+(double beat), Prism Weave (counter-moving ribbons), and Twin Orbit (amber/blue
+orbits). Meteor Shower (08) and Raindrops (09) are not included in firmware.
+
+Original Color preserves the mockup palettes; Color and Random Color recolor
+individual light envelopes with the selected base color. Brightness, 5–800%
+speed, ten-second persistence and the no-repeat shuffle apply as before. These
+IDs are appended to the catalogue, preserving existing IDs and saved choices.
+Native order is LED 10 to LED 1 when read visually left-to-right.
+
+The pure renderer runs at a nominal 33 ms cadence (about 30 FPS at 100%). A
+772-byte pair of linearly interpolated lookup tables supplies sine and Gaussian
+curves; no heap allocation, per-frame transcendental math or blocking output is
+needed. Integer phase reduction preserves smooth movement after long uptime.
+PIO/DMA output remains unchanged. Host tests compare 80 RGB frames against the
+mockup (at most 2/255 channel tolerance), plus palette edits, black/custom colors,
+large clocks, frame pacing, all 21 shuffle entries and settings restoration.
+Actual appearance and rendering time at maximum speed still need hardware checks.
 
 ## LED Pads
 
@@ -316,7 +340,7 @@ Changing Sparkle's color also converts existing quarter/dim background pixels,
 as its original color setter does, instead of leaving old-colored pixels behind.
 
 
-The random loop intentionally remains the requested shuffle of all 13 effects,
+The random loop intentionally remains the requested shuffle of all 21 effects,
 rather than the archived fixed eight-effect sequence. Random pixel selection has
 the same with-replacement behavior, but uses a native PRNG; an actual run does
 not reproduce CircuitPython's random seed/sequence. Automated tests exercise the native renderer directly; the archived Python

@@ -26,8 +26,8 @@ There is no authentication; the USB host controls the device.
   "pin": 0,
   "pads_supported": true,
   "control_view": "animations",
-  "default_colors": ["#00ff28", "#ff0014", "#b400ff", "#ffffff", "#ff6400", "#b400ff", "#00ff28", "#000000", "#00ff28", "#000000", "#000000", "#000000", "#000000"],
-  "effects": ["blink", "color-cycle", "comet", "chase", "pulse", "sparkle", "solid", "rainbow", "sparkle-pulse", "rainbow-comet", "rainbow-chase", "rainbow-sparkle", "custom-color-chase"]
+  "default_colors": ["#00ff28", "#ff0014", "#b400ff", "#ffffff", "#ff6400", "#b400ff", "#00ff28", "#000000", "#00ff28", "#000000", "#000000", "#000000", "#000000", "#27f0a7", "#6fffdb", "#abff2c", "#ffae13", "#7eddff", "#f72f6b", "#22b0ff", "#ff942c"],
+  "effects": ["blink", "color-cycle", "comet", "chase", "pulse", "sparkle", "solid", "rainbow", "sparkle-pulse", "rainbow-comet", "rainbow-chase", "rainbow-sparkle", "custom-color-chase", "aurora", "tidal", "fireflies", "molten", "ripple", "heartbeat", "prism-weave", "twin-orbit"]
 }
 ```
 
@@ -41,7 +41,11 @@ legacy compatibility flag (`true` only for original mode). `color` is the stored
 custom color; `current_color` is the effective base color for the current effect.
 Random mode samples once per effect start, including shuffle-loop transitions;
 parameter edits and GET requests do not resample. Multicolor palettes are
-always those from the original classes.
+always those from the original classes for the existing rainbow effects.
+The eight Animation Lab effects preserve their concept palettes in Original Color;
+custom/random mode applies one base color to their independently computed light
+envelopes. They run on all ten pixels with a nominal 33 ms interval at speed 100%.
+Meteor Shower and Raindrops are not valid firmware selections.
 `settings_saved` reports whether the current configuration matches a verified
 flash record. `settings_saving` is true only while a commit is executing, not during the
 ten-second debounce. Synchronous flash operations pause HTTP handling, so a
