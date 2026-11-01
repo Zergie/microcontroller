@@ -25,4 +25,10 @@ export class PinStore {
     // Only the submitted pin is acknowledged; drafts for other pins survive.
     if (appliedPin !== null) this.drafts.delete(appliedPin);
   }
+
+  receiveLevels(levels) {
+    if (!this.pins || !Array.isArray(levels) || levels.length !== this.pins.length ||
+        levels.some(value => value !== 0 && value !== 1)) throw new Error('Invalid GPIO levels.');
+    this.pins = this.pins.map((pin, index) => ({...pin, value: levels[index]}));
+  }
 }

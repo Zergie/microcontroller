@@ -11,6 +11,8 @@ export class PinSession {
   #busy = false;
   #connection = 'connecting';
   #error = '';
+  #polling = false;
+  #levelsOnly = false;
 
   constructor(request, changed = () => {}) {
     this.#request = request;
@@ -19,7 +21,7 @@ export class PinSession {
 
   get state() {
     return { pins: this.#store.pins, busy: this.#busy,
-      connection: this.#connection, error: this.#error };
+      connection: this.#connection, error: this.#error, levelsOnly: this.#levelsOnly };
   }
 
   pin(number) { return this.#store.pin(number); }
@@ -32,6 +34,26 @@ export class PinSession {
   }
 
   refresh() { return this.#perform(null); }
+
+  async poll() {
+    if (this.#busy || this.#polling || !this.#store.pins) return;
+    this.#polling = true;
+    try {
+      const data = await this.#request('/api/gpio/levels.json', 'GET');
+      // A manual operation owns state while it is in flight. Never rewrite
+      // editor values or drafts when only live electrical levels have changed.
+      if (!this.#busy) {
+        this.#store.receiveLevels(data.levels);
+        this.#connection = 'online';
+        this.#levelsOnly = true;
+        this.#changed();
+      }
+    } catch (error) {
+      if (!this.#busy && error.status !== 503) {
+        this.#connection = 'offline'; this.#changed();
+      }
+    } finally { this.#levelsOnly = false; this.#polling = false; }
+  }
 
   apply(number) {
     if (!this.pin(number)?.available) return Promise.resolve(false);

@@ -5,6 +5,19 @@
 #include "web_http.h"
 
 #define SNAPSHOT_CAPACITY 12288
+static bool gpio_levels(char *out, size_t capacity) {
+    if (capacity < 73) return false;
+    memcpy(out, "{\"levels\":[", 11);
+    size_t used = 11;
+    for (unsigned pin = 0; pin < 30; ++pin) {
+        struct gpio_snapshot state;
+        gpio_control_read(pin, &state);
+        if (pin) out[used++] = ',';
+        out[used++] = state.value ? '1' : '0';
+    }
+    memcpy(out + used, "]}", 3);
+    return true;
+}
 
 static const struct {
     const char *uri;
@@ -27,6 +40,8 @@ static const char *error_response(const char *uri) {
 }
 
 int app_http_open(struct fs_file *file, const char *uri) {
+    if (strcmp(uri, "/api/gpio/levels.json") == 0)
+        return web_http_json(file, 80, gpio_levels);
     if (strcmp(uri, "/api/gpio.json") == 0)
         return web_http_json(file, SNAPSHOT_CAPACITY, gpio_api_snapshot);
     if (strcmp(uri, "/api/led.json") == 0)

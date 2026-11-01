@@ -1,0 +1,34 @@
+import { editorFromPin } from './gpio-model.js';
+
+export class PinStore {
+  pins = null;
+  drafts = new Map();
+
+  pin(number) { return number !== null && this.pins ? this.pins[number] : null; }
+
+  values(number) {
+    return { ...editorFromPin(this.pin(number)), ...this.drafts.get(number) };
+  }
+
+  edit(number, field, value) {
+    if (!this.pin(number)) return;
+    const draft = { ...this.drafts.get(number), [field]: value };
+    if (editorFromPin(this.pin(number))[field] === value) delete draft[field];
+    if (Object.keys(draft).length) this.drafts.set(number, draft);
+    else this.drafts.delete(number);
+  }
+
+  receive(data, appliedPin = null) {
+    if (!Array.isArray(data.pins) || data.pins.length !== 41 ||
+        data.pins.some((pin, index) => pin.pin !== index)) throw new Error('Invalid GPIO status.');
+    this.pins = data.pins;
+    // Only the submitted pin is acknowledged; drafts for other pins survive.
+    if (appliedPin !== null) this.drafts.delete(appliedPin);
+  }
+
+  receiveLevels(levels) {
+    if (!this.pins || !Array.isArray(levels) || levels.length !== this.pins.length ||
+        levels.some(value => value !== 0 && value !== 1)) throw new Error('Invalid GPIO levels.');
+    this.pins = this.pins.map((pin, index) => ({...pin, value: levels[index]}));
+  }
+}

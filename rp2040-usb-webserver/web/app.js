@@ -205,7 +205,7 @@ function renderSession() {
   if (state.pins && state.pins !== renderedPins) {
     renderedPins = state.pins;
     renderBoard(state.pins);
-    renderUI();
+    if (!state.levelsOnly) renderUI();
   }
   renderBusy();
   message.textContent = { connecting: 'Connecting …', online: 'Connected', offline: 'Offline' }[state.connection];
@@ -244,3 +244,9 @@ infoDialog.addEventListener('click', event => { if (event.target === infoDialog)
 document.getElementById('refresh').addEventListener('click', () => session.refresh());
 renderUI();
 session.refresh();
+
+async function pollInputs() {
+  if (!document.hidden) await session.poll();
+  setTimeout(pollInputs, 250);
+}
+setTimeout(pollInputs, 250);

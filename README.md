@@ -19,3 +19,8 @@ Enjoy exploring and happy tinkering!
 - [RP2040 toolchain](toolchains/rp2040): pinned SDK and iOS NCM compatibility patch.
 
 Each native application builds its own UF2 and serves its own frontend/API.
+
+## STM32 USB webserver
+
+- [STM32G431CBU6 USB-NCM GPIO webserver](stm32g431-usb-webserver): separate
+  Cortex-M4 project with DHCP, GPIO/PWM UI and flash/RAM reporting.

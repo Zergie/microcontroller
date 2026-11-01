@@ -240,3 +240,5 @@ Hardware and artwork references:
 - [Official USB vector paths](https://www.raspberrypi.com/documentation/microcontrollers/images/pico-pinout.svg),
   group `USB_...`, embedded in `web/index.html` with original fill colors and
   no runtime dependency on an external image.
+
+GPIO levels refresh automatically every 250 ms while the page is visible. The compact /api/gpio/levels.json endpoint updates digital level markers without changing unsaved editor settings. Analog measurements still update through Refresh.

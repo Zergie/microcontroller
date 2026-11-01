@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#30343d">
+  <meta name="application-name" content="STM32G431 USB Webserver">
+  <title>STM32 · GPIO</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <main class="app">
+    <div class="page-scroll" tabindex="0" aria-label="Scroll header and STM32 ports">
+    <header class="topbar">
+      <h1>STM32 <span>GPIO</span></h1>
+      <div id="message" class="connection" role="status" aria-live="polite">Connecting …</div>
+      <button id="refresh" class="icon-button" aria-label="Refresh status">↻</button>
+    </header>
+
+    <p class="device-note">WeAct STM32G431 Core Board<br>Top view · USB at top · two rows per header</p>
+    <section class="pin-section" aria-label="WeAct board pinout, top view with USB at top">
+      <div class="pin-scroll"><div class="pinout">
+        <div class="board-top"><span class="board-button">BOOT0</span><span class="weact-usb">USB-C</span><span class="board-button">NRST</span></div>
+        <div id="left-edge" class="edge edge-left" aria-label="Left header, outer and inner rows"></div>
+        <div class="board-spine" aria-hidden="true"><span class="board-brand">WeAct</span><span class="stm32-chip">STM32<br>G431</span><span class="board-led">LED<br>PC6</span></div>
+        <div id="right-edge" class="edge edge-right" aria-label="Right header, inner and outer rows"></div>
+        <div class="board-bottom"><div id="debug-header" aria-label="SWD header: 3V3, DIO, CLK, GND"></div><button id="user-key" type="button" aria-label="Select PC13 user button">KEY C13 <span id="key-state">—</span></button></div>
+      </div></div>
+    </section>
+    </div>
+
+    <section class="editor" aria-label="Pin controls" aria-busy="false">
+      <form id="pin-form">
+        <div class="mode-fields">
+          <label>Mode<select id="pin-mode"><option value="" disabled hidden>Info only</option></select></label>
+          <label id="level-field" hidden>Level<select id="output-level"><option value="0">LOW · Off</option><option value="1">HIGH · On</option></select></label>
+        </div>
+        <div id="pwm-settings" hidden>
+          <div class="pwm-fields">
+            <label>Frequency <span>Hz</span><input id="frequency" type="number" inputmode="numeric" min="10" max="100000" step="1" value="1000" required></label>
+            <label>Duty Cycle <span>%</span><input id="duty" aria-label="Duty cycle in percent" type="number" inputmode="numeric" min="0" max="100" step="1" value="50" required></label>
+          </div>
+        </div>
+        <output id="analog-value" class="analog-value" aria-live="polite" hidden>— V</output>
+        <section id="advanced-settings" aria-label="GPIO pad settings" hidden>
+          <div id="output-advanced" class="advanced-fields" hidden>
+            
+            <label>Slew rate<select id="slew-rate"><option value="slow">Slow</option><option value="fast">Fast</option></select></label>
+          </div>
+          <label id="input-advanced" hidden>Hysteresis (Schmitt trigger)<select id="input-hysteresis"><option value="on">On</option><option value="off">Off</option></select></label>
+        </section>
+        <div class="editor-actions">
+          <button id="apply-pin" type="submit">Apply</button>
+          <button id="pin-info" type="button" aria-label="Show pin information" aria-haspopup="dialog">ⓘ</button>
+        </div>
+      </form>
+      <p id="action-message" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+  <dialog id="pin-info-dialog" aria-labelledby="pin-info-title">
+    <div class="info-sheet">
+      <header class="info-heading"><h2 id="pin-info-title">Pin information</h2><button id="close-info" type="button" aria-label="Close pin information"><svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m4 4 8 8m0-8-8 8"/></svg></button></header>
+      <ul id="pin-legend" class="pin-legend"></ul>
+      <p id="pin-marking" class="info-note" hidden></p>
+      <p id="pin-info-note" class="info-note"></p>
+      <section id="mode-explanation" aria-labelledby="mode-explanation-title" hidden>
+        <h3 id="mode-explanation-title"></h3>
+        <p id="mode-explanation-description"></p>
+        <dl id="setting-explanations"></dl>
+        <p class="info-note">These values reflect your current selection. Changes take effect only when you press Apply.</p>
+      </section>
+    </div>
+  </dialog>
+</body>
+</html>

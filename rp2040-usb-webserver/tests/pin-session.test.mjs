@@ -23,7 +23,7 @@ function fixture() {
 
 test('Refresh merges only edited fields; editing back to the applied value clears a draft', async () => {
   const { session, device, requests, notifications } = fixture();
-  assert.deepEqual(session.state, { pins: null, busy: false, connection: 'connecting', error: '' });
+  assert.deepEqual(session.state, { pins: null, busy: false, connection: 'connecting', error: '', levelsOnly: false });
   session.edit(null, 'mode', 'output');
   assert.equal(await session.refresh(), true);
   session.edit(0, 'mode', 'output');
@@ -155,4 +155,19 @@ test('Passive, reserved and unloaded pins do not send commands; unsupported mode
   assert.match(session.state.error, /not available/);
   assert.equal(session.values(25).mode, 'analog');
   assert.equal(requests.length, 1);
+});
+
+test('Live polling updates levels without clearing drafts or submitting commands', async () => {
+  const {session, replies, requests} = fixture();
+  await session.refresh();
+  session.edit(0, 'mode', 'output');
+  session.edit(0, 'level', '1');
+  const levels = Array(30).fill(0); levels[1] = 1;
+  replies.push(async () => ({levels}));
+  await session.poll();
+  assert.equal(session.pin(1).value, 1);
+  assert.equal(session.values(0).mode, 'output');
+  assert.equal(session.values(0).level, '1');
+  assert.equal(session.state.busy, false);
+  assert.deepEqual(requests.at(-1), {path: '/api/gpio/levels.json', method: 'GET'});
 });
